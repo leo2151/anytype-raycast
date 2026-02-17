@@ -368,6 +368,7 @@ export function CreateObjectForm({ draftValues, enableDrafts }: CreateObjectForm
               title="Name"
               placeholder="Add name"
               info="Enter the name of the object"
+              autoFocus={true}
             />
           )}
           {selectedTypeDef?.layout !== ObjectLayout.Bookmark &&

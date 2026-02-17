@@ -1,5 +1,10 @@
 # Anytype Changelog
 
+## [Focus & UX Enhancements] - 2026-02-18
+
+- Add default cursor focus to the "Name" field in all object creation forms (Object, Type, Property, Tag, Space)
+
+
 ## [Terminology Updates & Enhancements] - 2025-12-15
 
 - Update to API version 2025-11-08

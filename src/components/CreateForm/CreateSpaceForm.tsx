@@ -46,7 +46,13 @@ export function CreateSpaceForm({ draftValues }: CreateSpaceFormProps) {
         </ActionPanel>
       }
     >
-      <Form.TextField {...itemProps.name} title="Name" placeholder="Add name" info="The name of the space" />
+      <Form.TextField
+        {...itemProps.name}
+        title="Name"
+        placeholder="Add name"
+        info="The name of the space"
+        autoFocus={true}
+      />
       <Form.TextField
         {...itemProps.description}
         title="Description"
