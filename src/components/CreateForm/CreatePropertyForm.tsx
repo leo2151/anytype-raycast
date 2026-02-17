@@ -85,7 +85,13 @@ export function CreatePropertyForm({ spaceId, draftValues }: CreatePropertyFormP
         </ActionPanel>
       }
     >
-      <Form.TextField {...itemProps.name} title="Name" placeholder="Add name" info="The name of the property" />
+      <Form.TextField
+        {...itemProps.name}
+        title="Name"
+        placeholder="Add name"
+        info="The name of the property"
+        autoFocus={true}
+      />
       <Form.Dropdown {...itemProps.format} title="Format" info="The format of the property">
         {propertyFormatKeys.map((key) => {
           const value = PropertyFormat[key];

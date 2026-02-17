@@ -107,7 +107,13 @@ export function CreateTypeForm({ draftValues, enableDrafts }: CreateTypeFormProp
           <Form.Dropdown.Item key={space.id} value={space.id} title={space.name} icon={space.icon} />
         ))}
       </Form.Dropdown>
-      <Form.TextField {...itemProps.name} title="Name" placeholder="Add name" info="The name of the type" />
+      <Form.TextField
+        {...itemProps.name}
+        title="Name"
+        placeholder="Add name"
+        info="The name of the type"
+        autoFocus={true}
+      />
       <Form.TextField
         {...itemProps.plural_name}
         title="Plural Name"

@@ -9,6 +9,10 @@
 
 - Add support for Windows platform
 
+## [Focus & UX Enhancements] - 2026-02-18
+
+- Add default cursor focus to the "Name" field in all object creation forms (Object, Type, Property, Tag, Space)
+
 ## [Bug Fixes & Dependency Updates] - 2026-02-14
 
 - Fix object property dropdowns interfering with each other's search results in create and update forms
