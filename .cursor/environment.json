@@ -1,0 +1,4 @@
+{
+  "name": "Anytype Raycast Extension",
+  "install": "npm ci"
+}
