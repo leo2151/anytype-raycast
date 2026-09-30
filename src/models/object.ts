@@ -16,11 +16,11 @@ export enum BodyFormat {
 
 export interface CreateObjectRequest {
   name: string;
-  icon: ObjectIcon;
-  template_id: string;
+  icon?: ObjectIcon;
+  template_id?: string;
   type_key: string;
   properties: PropertyLinkWithValue[];
-  body: string; // TODO: rename to markdown?
+  body?: string; // Omit to preserve template content.
 }
 
 export interface UpdateObjectRequest {

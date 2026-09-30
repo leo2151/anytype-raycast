@@ -1,3 +1,10 @@
+## [Dedicated Create Task command] - 2026-10-01
+
+- Add an independent English Create Task command with an optional title argument, task-focused fields, and More Options for custom properties.
+- Preserve Task template defaults, always create incomplete tasks, and store command-specific settings locally.
+- Add continuous task capture, multi-object project selection, local drafts and persisted creation recovery.
+- Keep existing Create Object and Quicklinks unchanged.
+
 ## [Local reliability and search improvements] - 2026-10-01
 
 - Preserve custom creation focus, recently-modified touch, and Raycast 2 runtime support.
