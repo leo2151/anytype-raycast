@@ -16,3 +16,18 @@ export async function updateObject(
 
   return { object: await mapObject(response.payload.object) };
 }
+
+export async function updateObjectRaw(
+  spaceId: string,
+  objectId: string,
+  request: UpdateObjectRequest,
+): Promise<{ object: RawSpaceObject }> {
+  const { url, method } = apiEndpoints.updateObject(spaceId, objectId);
+
+  const response = await apiFetch<{ object: RawSpaceObject }>(url, {
+    method: method,
+    body: JSON.stringify(request),
+  });
+
+  return response.payload;
+}

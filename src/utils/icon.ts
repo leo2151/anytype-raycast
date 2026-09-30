@@ -1,7 +1,9 @@
 import { Icon, Image } from "@raycast/api";
-import fetch from "node-fetch";
 import { IconFormat, IconName, ObjectIcon, ObjectLayout, RawType } from "../models";
+import { getApiKey } from "./api";
+import { getCacheNamespace } from "./cacheScope";
 import { colorToHex, iconWidth } from "./constant";
+import { request } from "./request";
 
 /**
  * Determine which icon to show for a given Object. Icon can be url or emoji.
@@ -94,10 +96,25 @@ export function getCustomTypeIcon(name: string, color?: string): Image.ImageLike
  * @param iconUrl The URL of the icon.
  * @returns The base64 data URI of the icon or undefined.
  */
+const iconCache = new Map<string, { value: Promise<string | undefined>; expires: number }>();
+
 export async function getFile(iconUrl: string): Promise<string | undefined> {
-  if (iconUrl && iconUrl.startsWith("http://127.0.0.1")) {
-    const urlWithWidth = `${iconUrl}?width=${iconWidth}`;
-    return (await fetchWithTimeout(urlWithWidth, 500)) || undefined;
+  // Only send the API key to the local gateway, not a hostname with a similar prefix.
+  let url: URL;
+  try {
+    url = new URL(iconUrl);
+  } catch {
+    return undefined;
+  }
+  if (url.protocol === "http:" && url.hostname === "127.0.0.1") {
+    url.searchParams.set("width", String(iconWidth));
+    const key = `${getCacheNamespace()}:${url.toString()}`;
+    const cached = iconCache.get(key);
+    if (cached && cached.expires > Date.now()) return cached.value;
+    if (iconCache.size >= 256) iconCache.delete(iconCache.keys().next().value!);
+    const value = fetchWithTimeout(url.toString(), 1500);
+    iconCache.set(key, { value, expires: Date.now() + 60000 });
+    return value;
   }
 
   return undefined;
@@ -110,21 +127,27 @@ export async function getFile(iconUrl: string): Promise<string | undefined> {
  * @returns The base64 data URI of the icon or undefined.
  */
 export async function fetchWithTimeout(url: string, timeout: number): Promise<string | undefined> {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-
   try {
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(id);
-    if (response.ok) {
-      const iconData = await response.arrayBuffer();
-      return `data:image/png;base64,${Buffer.from(iconData).toString("base64")}`;
-    }
-  } catch (error) {
-    console.log("Failed to fetch icon with timeout:", error);
+    const token = await getApiKey();
+    return await request(
+      url,
+      {
+        redirect: "error",
+        size: 2 * 1024 * 1024,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      },
+      async (response) => {
+        if (!response.ok) return undefined;
+        const mime = response.headers.get("content-type")?.split(";")[0] ?? "image/png";
+        if (!mime.startsWith("image/")) return undefined;
+        const data = await response.arrayBuffer();
+        return `data:${mime};base64,${Buffer.from(data).toString("base64")}`;
+      },
+      { timeoutMs: timeout },
+    );
+  } catch {
+    return undefined;
   }
-
-  return undefined;
 }
 
 /**

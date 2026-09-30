@@ -1,11 +1,10 @@
 import { Action, ActionPanel, Form, Icon, popToRoot, showToast, Toast } from "@raycast/api";
 import { showFailureToast, useForm } from "@raycast/utils";
 import { formatRFC3339 } from "date-fns";
-import { useEffect, useMemo, useState } from "react";
-import { addObjectsToList, createObject } from "../../api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { addObjectsToList, createObjectRaw as createObject, updateObjectRaw as updateObject } from "../../api";
 import { useCreateObjectData, useTagsMap } from "../../hooks";
 import {
-  AddObjectsToListRequest,
   CreateObjectRequest,
   IconFormat,
   ObjectLayout,
@@ -70,6 +69,25 @@ export function CreateObjectForm({ draftValues, enableDrafts }: CreateObjectForm
   } = useCreateObjectData(draftValues);
 
   const [isLoading, setIsLoading] = useState(false);
+  const busy = useRef(false);
+  const [pendingCollection, setPendingCollection] = useState<{ spaceId: string; listId: string; objectId: string }>();
+  async function retryCollection() {
+    if (!pendingCollection || busy.current) return;
+    busy.current = true;
+    setIsLoading(true);
+    try {
+      await addObjectsToList(pendingCollection.spaceId, pendingCollection.listId, {
+        objects: [pendingCollection.objectId],
+      });
+      await showToast(Toast.Style.Success, "Object added to collection");
+      await popToRoot();
+    } catch (error) {
+      await showFailureToast(error, { title: "Object saved; collection update failed" });
+    } finally {
+      busy.current = false;
+      setIsLoading(false);
+    }
+  }
   const [typeKeysForLists, setTypeKeysForLists] = useState<string[]>([]);
 
   const selectedTypeDef = types.find((type) => type.id === selectedTypeId);
@@ -93,12 +111,14 @@ export function CreateObjectForm({ draftValues, enableDrafts }: CreateObjectForm
         setTypeKeysForLists(listsTypes);
       }
     };
-    fetchTypesForLists();
+    fetchTypesForLists().catch((error) => showFailureToast(error, { title: "Failed to load types" }));
   }, [spaces]);
 
   const { handleSubmit, itemProps } = useForm<CreateObjectFormValues>({
     initialValues: draftValues,
     onSubmit: async (values) => {
+      if (busy.current || pendingCollection) return;
+      busy.current = true;
       setIsLoading(true);
       try {
         await showToast({ style: Toast.Style.Animated, title: "Creating object..." });
@@ -184,9 +204,21 @@ export function CreateObjectForm({ draftValues, enableDrafts }: CreateObjectForm
         const response = await createObject(selectedSpaceId, request);
 
         if (response.object.id) {
+          // Touch the object to update `last_modified_date` so it appears in "recently modified" views
+          try {
+            await updateObject(selectedSpaceId, response.object.id, { name: response.object.name });
+          } catch {
+            // Non-critical
+          }
+
           if (selectedListId) {
-            const request: AddObjectsToListRequest = { objects: [response.object.id] };
-            await addObjectsToList(selectedSpaceId, selectedListId, request);
+            try {
+              await addObjectsToList(selectedSpaceId, selectedListId, { objects: [response.object.id] });
+            } catch (error) {
+              setPendingCollection({ spaceId: selectedSpaceId, listId: selectedListId, objectId: response.object.id });
+              await showFailureToast(error, { title: "Object saved; collection update failed" });
+              return;
+            }
             await showToast(Toast.Style.Success, "Object created and added to collection");
           } else {
             await showToast(Toast.Style.Success, "Object created successfully");
@@ -198,6 +230,7 @@ export function CreateObjectForm({ draftValues, enableDrafts }: CreateObjectForm
       } catch (error) {
         await showFailureToast(error, { title: "Failed to create object" });
       } finally {
+        busy.current = false;
         setIsLoading(false);
       }
     },
@@ -224,7 +257,7 @@ export function CreateObjectForm({ draftValues, enableDrafts }: CreateObjectForm
   });
 
   function getQuicklink(): { name: string; link: string } {
-    const url = "raycast://extensions/any/anytype/create-object";
+    const url = `${process.env.RAYCAST_SCHEME ?? "raycast"}://extensions/any/anytype/create-object`;
 
     const defaults: Record<string, PropertyFieldValue> = {
       [itemProps.spaceId.id]: selectedSpaceId,
@@ -259,6 +292,26 @@ export function CreateObjectForm({ draftValues, enableDrafts }: CreateObjectForm
     [PropertyFormat.Email]: "Add email address",
     [PropertyFormat.Phone]: "Add phone number",
   };
+
+  if (pendingCollection)
+    return (
+      <Form
+        navigationTitle="Object Saved"
+        isLoading={isLoading}
+        actions={
+          <ActionPanel>
+            <Action title="Retry Adding to Collection" icon={Icon.ArrowClockwise} onAction={retryCollection} />
+            <Action title="Keep Object and Close" icon={Icon.Check} onAction={popToRoot} />
+          </ActionPanel>
+        }
+      >
+        <Form.Description
+          title="Object saved"
+          text="The object was created successfully, but could not be added to the collection. Retry only the collection update, or keep the saved object and close."
+        />
+        <Form.Description title="Object ID" text={pendingCollection.objectId} />
+      </Form>
+    );
 
   return (
     <Form

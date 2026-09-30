@@ -12,3 +12,17 @@ export async function createObject(spaceId: string, request: CreateObjectRequest
 
   return { object: await mapObject(response.payload.object) };
 }
+
+export async function createObjectRaw(
+  spaceId: string,
+  request: CreateObjectRequest,
+): Promise<{ object: RawSpaceObject }> {
+  const { url, method } = apiEndpoints.createObject(spaceId);
+
+  const response = await apiFetch<{ object: RawSpaceObject }>(url, {
+    method: method,
+    body: JSON.stringify(request),
+  });
+
+  return response.payload;
+}

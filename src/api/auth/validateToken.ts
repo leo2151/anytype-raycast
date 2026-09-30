@@ -1,6 +1,6 @@
 import { showToast, Toast } from "@raycast/api";
 import { PaginatedResponse, RawSpace } from "../../models";
-import { apiEndpoints, apiFetch, currentApiVersion, errorConnectionMessage } from "../../utils";
+import { apiEndpoints, apiFetch, currentApiVersion, ErrorWithStatus } from "../../utils";
 
 // Validate api version and token by checking if data can be fetched without errors
 export async function checkApiTokenValidity(): Promise<boolean> {
@@ -24,11 +24,14 @@ export async function checkApiTokenValidity(): Promise<boolean> {
     }
     return true;
   } catch (error) {
-    if (error instanceof Error) {
-      return error.message == errorConnectionMessage;
-    } else {
-      console.error("Unknown error:", error);
-      return false;
-    }
+    // Only an explicit authentication rejection should invalidate a saved key.
+    // A stopped desktop app, rate limit, timeout, or gateway failure can recover.
+    if ((error as ErrorWithStatus)?.status === 401) return false;
+    await showToast(
+      Toast.Style.Failure,
+      "Anytype is temporarily unavailable",
+      "Open Anytype and retry if results do not load.",
+    );
+    return true;
   }
 }

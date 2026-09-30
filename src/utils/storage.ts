@@ -1,16 +1,36 @@
 import { LocalStorage, showToast, Toast } from "@raycast/api";
+import { initializeCacheScope } from "./cacheScope";
 import { localStorageKeys, maxPinnedObjects } from "./constant";
 
+async function pinKey(suffix: string): Promise<string> {
+  return `${await initializeCacheScope()}:${localStorageKeys.pinnedObjectsWith(suffix)}`;
+}
+
 export async function getPinned(pinSuffix: string): Promise<{ spaceId: string; objectId: string }[]> {
-  const pinnedObjects = await LocalStorage.getItem<string>(localStorageKeys.pinnedObjectsWith(pinSuffix));
-  return pinnedObjects ? JSON.parse(pinnedObjects) : [];
+  const key = await pinKey(pinSuffix);
+  let pinnedObjects = await LocalStorage.getItem<string>(key);
+  if (pinnedObjects === undefined) {
+    const ownerKey = "legacy_pins_owner";
+    const owner = await LocalStorage.getItem<string>(ownerKey);
+    const scope = await initializeCacheScope();
+    if (!owner || owner === scope) {
+      await LocalStorage.setItem(ownerKey, scope);
+      pinnedObjects = await LocalStorage.getItem<string>(localStorageKeys.pinnedObjectsWith(pinSuffix));
+    }
+    await LocalStorage.setItem(key, pinnedObjects || "[]");
+  }
+  try {
+    return pinnedObjects ? JSON.parse(pinnedObjects) : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function setPinned(
   pinSuffix: string,
   pinnedObjects: { spaceId: string; objectId: string }[],
 ): Promise<void> {
-  await LocalStorage.setItem(localStorageKeys.pinnedObjectsWith(pinSuffix), JSON.stringify(pinnedObjects));
+  await LocalStorage.setItem(await pinKey(pinSuffix), JSON.stringify(pinnedObjects));
 }
 
 export async function addPinned(

@@ -1,13 +1,14 @@
 import { useCachedPromise } from "@raycast/utils";
 import { getProperty } from "../api";
+import { getCacheNamespace } from "../utils/cacheScope";
 
 export function useProperty(spaceId: string, propertyId: string) {
   const { data, error, isLoading, mutate } = useCachedPromise(
-    async (spaceId: string, propertyId: string) => {
+    async (_cacheScope: string, spaceId: string, propertyId: string) => {
       const response = await getProperty(spaceId, propertyId);
       return response.property;
     },
-    [spaceId, propertyId],
+    [getCacheNamespace(), spaceId, propertyId],
     {
       keepPreviousData: true,
       execute: !!spaceId && !!propertyId,

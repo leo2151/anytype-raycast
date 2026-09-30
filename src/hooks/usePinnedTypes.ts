@@ -2,10 +2,11 @@ import { useCachedPromise } from "@raycast/utils";
 import { getType } from "../api";
 import { Type } from "../models";
 import { errorConnectionMessage, ErrorWithStatus, getPinned, removePinned } from "../utils";
+import { getCacheNamespace } from "../utils/cacheScope";
 
-export function usePinnedTypes(key: string) {
+export function usePinnedTypes(key: string, config?: { execute?: boolean }) {
   const { data, error, isLoading, mutate } = useCachedPromise(
-    async (key: string) => {
+    async (_cacheScope: string, key: string) => {
       const pinnedTypes = await getPinned(key);
       const types: Type[] = [];
 
@@ -29,9 +30,10 @@ export function usePinnedTypes(key: string) {
 
       return types;
     },
-    [key],
+    [getCacheNamespace(), key],
     {
       keepPreviousData: true,
+      execute: config?.execute !== false,
     },
   );
 

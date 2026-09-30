@@ -1,8 +1,12 @@
-import { search } from "../api";
+import { searchRaw as search } from "../api";
 import { SortDirection, SortOptions, SortProperty } from "../models";
-import { apiLimit } from "../utils";
+import { pageOptions } from "../utils/pagination";
 
 type Input = {
+  /** Starting offset, default 0. Use next_offset to continue. */
+  offset?: number;
+  /** Page size between 1 and 1000, default 50. */
+  limit?: number;
   /**
    * The unique identifier of the space to search within.
    * This value can be obtained from the `getSpaces` tool.
@@ -10,7 +14,7 @@ type Input = {
   spaceId: string;
 
   /**
-   * The search query for the title of the page.
+   * The plain-text search query. Global search may also match indexed content.
    * Note: Only plain text is supported; operators are not allowed.
    */
   query: string;
@@ -50,26 +54,26 @@ type Input = {
  * that match the search criteria.
  * For empty search query and sort criterion, most recently modified objects are returned.
  */
-export default async function tool({ spaceId, query, types, sort }: Input) {
+export default async function tool({ spaceId, query, types, sort, offset, limit }: Input) {
   types = types ?? [];
   const sortOptions: SortOptions = {
     property_key: sort?.propertyKey ?? SortProperty.LastModifiedDate,
     direction: sort?.direction ?? SortDirection.Descending,
   };
 
-  const { data, pagination } = await search(
+  const { data, pagination, all_stores_loaded } = await search(
     spaceId,
     { query, types, sort: sortOptions },
-    { offset: 0, limit: apiLimit },
+    pageOptions(offset, limit),
   );
   const results = data.map(({ object, name, id, type, snippet }) => ({
     object,
     name,
     id,
     type: {
-      name: type.name,
-      id: type.id,
-      type_key: type.key,
+      name: type?.name,
+      id: type?.id,
+      type_key: type?.key,
     },
     snippet,
   }));
@@ -77,5 +81,8 @@ export default async function tool({ spaceId, query, types, sort }: Input) {
   return {
     results,
     pagination,
+    next_offset: pagination.has_more ? pagination.offset + data.length : null,
+    all_stores_loaded,
+    complete: !pagination.has_more && all_stores_loaded !== false,
   };
 }

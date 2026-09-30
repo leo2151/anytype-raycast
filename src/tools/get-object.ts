@@ -1,4 +1,4 @@
-import { getObject } from "../api";
+import { getRawObject as getObject } from "../api";
 import { BodyFormat } from "../models";
 
 type Input = {
@@ -29,9 +29,9 @@ export default async function tool({ spaceId, objectId }: Input) {
     id: object.id,
     spaceId: object.space_id,
     type: {
-      name: object.type.name,
-      id: object.type.id,
-      type_key: object.type.key,
+      name: object.type?.name,
+      id: object.type?.id,
+      type_key: object.type?.key,
     },
     properties: object.properties,
     markdown: object.markdown,

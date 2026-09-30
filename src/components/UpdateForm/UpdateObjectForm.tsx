@@ -1,9 +1,9 @@
 import { Action, ActionPanel, Form, Icon, showToast, Toast, useNavigation } from "@raycast/api";
-import { MutatePromise, showFailureToast, useForm } from "@raycast/utils";
+import { MutatePromise, showFailureToast, useCachedPromise, useForm } from "@raycast/utils";
 import { formatRFC3339 } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
-import { updateObject } from "../../api";
-import { useSpaces, useTagsMap, useTypes } from "../../hooks";
+import { updateObjectRaw as updateObject } from "../../api";
+import { useSpaces, useTagsMap } from "../../hooks";
 import {
   IconFormat,
   ObjectIcon,
@@ -14,6 +14,7 @@ import {
   RawSpaceObjectWithBody,
   SpaceObject,
   SpaceObjectWithBody,
+  Type,
   UpdateObjectRequest,
 } from "../../models";
 import {
@@ -23,6 +24,8 @@ import {
   getNumberFieldValidations,
   isEmoji,
 } from "../../utils";
+import { getCacheNamespace } from "../../utils/cacheScope";
+import { fetchAllTypesForSpace } from "../../utils/type";
 import { ObjectPropertyDropdown } from "../ObjectPropertyDropdown";
 
 interface UpdateObjectFormValues {
@@ -41,14 +44,35 @@ interface UpdateObjectFormProps {
   mutateObject?: MutatePromise<SpaceObjectWithBody | undefined>;
 }
 
-export function UpdateObjectForm({ spaceId, object, mutateObjects, mutateObject }: UpdateObjectFormProps) {
+export function UpdateObjectForm(props: UpdateObjectFormProps) {
+  const { data, error, isLoading } = useCachedPromise(
+    (_scope: string, spaceId: string) => fetchAllTypesForSpace(spaceId),
+    [getCacheNamespace(), props.spaceId],
+  );
+  if (!data)
+    return (
+      <Form isLoading={isLoading}>
+        <Form.Description
+          text={error ? "Failed to load types. Reopen this form to retry." : "Loading object properties…"}
+        />
+      </Form>
+    );
+  return <LoadedUpdateObjectForm {...props} types={data} />;
+}
+
+function LoadedUpdateObjectForm({
+  spaceId,
+  object,
+  mutateObjects,
+  mutateObject,
+  types,
+}: UpdateObjectFormProps & { types: Type[] }) {
   const { pop } = useNavigation();
   const [isLoading, setIsLoading] = useState(false);
   const [typeKeysForLists, setTypeKeysForLists] = useState<string[]>([]);
   const [selectedTypeKey, setSelectedTypeKey] = useState(object.type?.key ?? "");
 
-  const { spaces, spacesError, isLoadingSpaces } = useSpaces();
-  const { types, typesError, isLoadingTypes } = useTypes(spaceId);
+  const { spaces, spacesError, isLoadingSpaces } = useSpaces(undefined, { all: true });
 
   const selectedType = types.find((t) => t.key === selectedTypeKey);
   const properties = selectedType?.properties.filter((p) => !Object.values(bundledPropKeys).includes(p.key)) ?? [];
@@ -61,12 +85,12 @@ export function UpdateObjectForm({ spaceId, object, mutateObjects, mutateObject 
   );
 
   useEffect(() => {
-    if (tagsError || spacesError || typesError) {
-      showFailureToast(tagsError || spacesError || typesError, {
+    if (tagsError || spacesError) {
+      showFailureToast(tagsError || spacesError, {
         title: "Failed to load data",
       });
     }
-  }, [tagsError, spacesError, typesError]);
+  }, [tagsError, spacesError]);
 
   useEffect(() => {
     const fetchTypesForLists = async () => {
@@ -75,7 +99,7 @@ export function UpdateObjectForm({ spaceId, object, mutateObjects, mutateObject 
         setTypeKeysForLists(listsTypes);
       }
     };
-    fetchTypesForLists();
+    fetchTypesForLists().catch((error) => showFailureToast(error, { title: "Failed to load types" }));
   }, [spaces]);
 
   // Map existing property entries to form field values
@@ -150,6 +174,7 @@ export function UpdateObjectForm({ spaceId, object, mutateObjects, mutateObject 
         const propertiesEntries: PropertyLinkWithValue[] = [];
         properties.forEach((prop) => {
           const raw = itemProps[prop.key]?.value;
+          if (raw === undefined || JSON.stringify(raw) === JSON.stringify(initialPropertyValues[prop.key])) return;
           const entry: PropertyLinkWithValue = { key: prop.key };
           switch (prop.format) {
             case PropertyFormat.Text:
@@ -197,7 +222,7 @@ export function UpdateObjectForm({ spaceId, object, mutateObjects, mutateObject 
         });
 
         const descriptionRaw = itemProps[bundledPropKeys.description]?.value;
-        if (descriptionRaw !== undefined && descriptionRaw !== null) {
+        if (descriptionRaw !== undefined && descriptionRaw !== null && descriptionRaw !== initialValues.description) {
           propertiesEntries.push({
             key: bundledPropKeys.description,
             text: String(descriptionRaw),
@@ -209,14 +234,14 @@ export function UpdateObjectForm({ spaceId, object, mutateObjects, mutateObject 
           iconField !== initialIconValue ? { format: IconFormat.Emoji, emoji: iconField } : undefined;
 
         const payload: UpdateObjectRequest = {
-          name: values.name,
+          ...(values.name !== object.name && { name: values.name }),
           ...(iconPayload && { icon: iconPayload }),
           ...(values.typeKey && values.typeKey !== object.type?.key && { type_key: values.typeKey }),
-          properties: propertiesEntries,
-          markdown: values.markdown,
+          ...(propertiesEntries.length > 0 && { properties: propertiesEntries }),
+          ...(values.markdown !== object.markdown && { markdown: values.markdown }),
         };
 
-        await updateObject(spaceId, object.id, payload);
+        if (Object.keys(payload).length > 0) await updateObject(spaceId, object.id, payload);
 
         await showToast(Toast.Style.Success, "Object updated");
         await Promise.all(mutateObjects.map((mutate) => mutate()));
@@ -249,7 +274,7 @@ export function UpdateObjectForm({ spaceId, object, mutateObjects, mutateObject 
   return (
     <Form
       navigationTitle={`Edit ${object.type?.name ?? "Object"}`}
-      isLoading={isLoading || isLoadingTags || isLoadingTypes || isLoadingSpaces}
+      isLoading={isLoading || isLoadingTags || isLoadingSpaces}
       actions={
         <ActionPanel>
           <Action.SubmitForm title="Save Changes" icon={Icon.Check} onSubmit={handleSubmit} />

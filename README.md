@@ -79,3 +79,7 @@ For performance reasons, the extension only fetches a limited amount of items at
 - Pagination is supported in lists to access additional items when scrolling down. However, the extension might refuse to paginate further if the available memory is exhausted.
 - For dropdowns in `Create Object` command the limitation remains.
 - The API limit can be adjusted in the extension settings - default is 50 items.
+
+## Custom fork maintenance
+
+See [LOCAL_CHANGES.md](LOCAL_CHANGES.md) for preserved custom features, reliability fixes, search filters, AI updates, and local build instructions.

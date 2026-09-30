@@ -2,10 +2,11 @@ import { useCachedPromise } from "@raycast/utils";
 import { useMemo } from "react";
 import { getMembers } from "../api";
 import { apiLimit } from "../utils";
+import { getCacheNamespace } from "../utils/cacheScope";
 
-export function useMembers(spaceId: string, searchText?: string) {
+export function useMembers(spaceId: string, searchText?: string, config?: { execute?: boolean }) {
   const { data, error, isLoading, mutate, pagination } = useCachedPromise(
-    (spaceId: string, searchText?: string) => async (options: { page: number }) => {
+    (_cacheScope: string, spaceId: string, searchText?: string) => async (options: { page: number }) => {
       const offset = options.page * apiLimit;
       const response = await getMembers(spaceId, { offset, limit: apiLimit, name: searchText });
 
@@ -14,10 +15,10 @@ export function useMembers(spaceId: string, searchText?: string) {
         hasMore: response.pagination.has_more,
       };
     },
-    [spaceId, searchText],
+    [getCacheNamespace(), spaceId, searchText],
     {
       keepPreviousData: true,
-      execute: !!spaceId,
+      execute: !!spaceId && config?.execute !== false,
     },
   );
 
