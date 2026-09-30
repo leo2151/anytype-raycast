@@ -66,11 +66,24 @@ Make the most of the Anytype extension with the following tips:
 
 ## Troubleshooting
 
+### Extension Missing or Broken After Upgrading to Raycast 2
+
+Custom/development installs may not carry over automatically. From this repository, reinstall the extension into Raycast 2:
+
+```bash
+npm install
+npm run build
+npm run dev
+```
+
+Then relaunch the command from Raycast. If you previously migrated from Raycast v1, you can also run the built-in **Migrate from Raycast v1** command.
+
 ### Error: API Not Reachable
 
 - Ensure the Anytype Desktop app is running.
 - Confirm you are logged into your vault.
 - Verify both the extension and Anytype desktop app are up-to-date, with the app version being **v0.45.0** or later.
+- If your API URL preference still uses `localhost`, switch it to `http://127.0.0.1:31009` (or leave the default).
 
 ### Objects, Types or Spaces Not Displaying Completely
 

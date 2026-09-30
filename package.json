@@ -780,8 +780,8 @@
     }
   ],
   "dependencies": {
-    "@raycast/api": "^1.104.24",
-    "@raycast/utils": "^2.2.7",
+    "@raycast/api": "^2.6.0",
+    "@raycast/utils": "^2.3.2",
     "date-fns": "4.4.0",
     "emoji-regex": "10.6.0",
     "node-fetch": "3.3.2",
@@ -803,7 +803,6 @@
   "scripts": {
     "build": "ray build",
     "dev": "ray develop",
-    "dev:beta": "ray develop --target x",
     "lint": "ray lint",
     "lint:fix": "ray lint --fix",
     "format": "prettier --write .",
