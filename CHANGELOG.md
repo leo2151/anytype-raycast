@@ -1,6 +1,17 @@
 # Anytype Changelog
 
-## [Dependency Updates] - {PR_MERGE_DATE}
+## [Raycast 2 Compatibility] - 2026-09-30
+
+- Upgrade `@raycast/api` to v2 for Raycast 2 compatibility
+- Merge upstream fixes for authenticated local gateway icon requests and renamed space kinds
+- Keep forcing `127.0.0.1` instead of `localhost` to avoid Node.js IPv6 `ECONNREFUSED` issues
+
+## [Bug Fixes] - 2026-06-15
+
+- Fix channel icons not loading from the local gateway after it started requiring authentication
+- Fix channel type filter and fallback icons in the Browse Channels command for renamed space kinds
+
+## [Dependency Updates] - 2026-04-06
 
 - Update dependencies to latest versions
 - Update metadata images
