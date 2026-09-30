@@ -1,20 +1,11 @@
 import { Action, ActionPanel, Icon, Toast, showToast } from "@raycast/api";
 import { MutatePromise, showFailureToast } from "@raycast/utils";
 import { useState } from "react";
-import { createTag, updateObject } from "../../api";
+import { createTag } from "../../api";
 import { useProperties, useTags } from "../../hooks";
-import {
-  Color,
-  Member,
-  Property,
-  PropertyLinkWithValue,
-  PropertyWithValue,
-  SpaceObject,
-  SpaceObjectWithBody,
-  Tag,
-  Type,
-} from "../../models";
+import { Color, Member, Property, PropertyWithValue, SpaceObject, SpaceObjectWithBody, Tag, Type } from "../../models";
 import { propKeys } from "../../utils";
+import { changeObjectTag } from "../../utils/tags";
 
 interface TagSubmenuProps {
   spaceId: string;
@@ -42,16 +33,7 @@ export function TagSubmenu({ spaceId, object, mutate, mutateObject }: TagSubmenu
   async function addTag(tag: Tag) {
     await showToast({ style: Toast.Style.Animated, title: "Adding tag…" });
     try {
-      const newTagIds = [...currentTags.map((t: Tag) => t.id), tag.id];
-
-      const propertyUpdate: PropertyLinkWithValue = {
-        key: propKeys.tag,
-        multi_select: newTagIds,
-      };
-
-      await updateObject(spaceId, object.id, {
-        properties: [propertyUpdate],
-      });
+      await changeObjectTag(spaceId, object.id, tag.id);
 
       await showToast({ style: Toast.Style.Success, title: "Tag added" });
       if (mutate) {
@@ -68,16 +50,7 @@ export function TagSubmenu({ spaceId, object, mutate, mutateObject }: TagSubmenu
   async function removeTag(tag: Tag) {
     await showToast({ style: Toast.Style.Animated, title: "Removing tag…" });
     try {
-      const newTagIds = currentTags.filter((t: Tag) => t.id !== tag.id).map((t: Tag) => t.id);
-
-      const propertyUpdate: PropertyLinkWithValue = {
-        key: propKeys.tag,
-        multi_select: newTagIds,
-      };
-
-      await updateObject(spaceId, object.id, {
-        properties: [propertyUpdate],
-      });
+      await changeObjectTag(spaceId, object.id, tag.id, true);
 
       await showToast({ style: Toast.Style.Success, title: "Tag removed" });
       if (mutate) {
@@ -105,16 +78,7 @@ export function TagSubmenu({ spaceId, object, mutate, mutateObject }: TagSubmenu
       });
 
       // Add the newly created tag to the object
-      const newTagIds = [...currentTags.map((t: Tag) => t.id), tag.id];
-
-      const propertyUpdate: PropertyLinkWithValue = {
-        key: propKeys.tag,
-        multi_select: newTagIds,
-      };
-
-      await updateObject(spaceId, object.id, {
-        properties: [propertyUpdate],
-      });
+      await changeObjectTag(spaceId, object.id, tag.id);
 
       await showToast({ style: Toast.Style.Success, title: "Tag created and added" });
       if (mutate) {

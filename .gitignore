@@ -11,3 +11,11 @@ compiled_raycast_swift
 
 # misc
 .DS_Store
+
+# Local build artifacts and private scratch data
+/dist/
+*.zip
+*.tar.gz
+/test-*
+.env
+.env.*

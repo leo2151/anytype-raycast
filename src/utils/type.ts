@@ -1,57 +1,45 @@
 import { getTemplates, getTypes } from "../api";
 import { ObjectLayout, Space, SpaceObject, Type } from "../models";
-import { apiLimitMax, bundledTypeKeys } from "../utils";
+import { bundledTypeKeys } from "../utils";
+import { getCacheNamespace } from "./cacheScope";
+import { collectPages, mapConcurrent } from "./pagination";
 
 /**
  * Fetches all `Type`s from a single space, doing pagination if necessary.
  */
+const typeCache = new Map<string, { expires: number; value: Promise<Type[]> }>();
 export async function fetchAllTypesForSpace(spaceId: string): Promise<Type[]> {
-  const allTypes: Type[] = [];
-  let hasMore = true;
-  let offset = 0;
-
-  while (hasMore) {
-    const response = await getTypes(spaceId, { offset, limit: apiLimitMax });
-    allTypes.push(...response.types);
-    hasMore = response.pagination.has_more;
-    offset += apiLimitMax;
+  const key = `${getCacheNamespace()}:${spaceId}`;
+  const cached = typeCache.get(key);
+  if (cached && cached.expires > Date.now()) return cached.value;
+  const value = collectPages(async (offset, limit) => {
+    const result = await getTypes(spaceId, { offset, limit });
+    return { items: result.types, pagination: result.pagination };
+  });
+  typeCache.set(key, { expires: Date.now() + 30000, value });
+  try {
+    return await value;
+  } catch (error) {
+    typeCache.delete(key);
+    throw error;
   }
-
-  return allTypes;
 }
 
 /**
  * Aggregates all `Type`s from all given spaces.
  */
 export async function getAllTypesFromSpaces(spaces: Space[]): Promise<Type[]> {
-  const allTypes: Type[] = [];
-  for (const space of spaces) {
-    try {
-      const types = await fetchAllTypesForSpace(space.id);
-      allTypes.push(...types);
-    } catch (err) {
-      console.log(`Error fetching types for space ${space.id}:`, err);
-    }
-  }
-  return allTypes;
+  return (await mapConcurrent(spaces, (space) => fetchAllTypesForSpace(space.id))).flat();
 }
 
 /**
  * Fetches all `Template`s from a single space and type, doing pagination if necessary.
  */
 export async function fetchAllTemplatesForSpace(spaceId: string, typeId: string): Promise<SpaceObject[]> {
-  const allTemplates: SpaceObject[] = [];
-  let hasMore = true;
-  let offset = 0;
-
-  while (hasMore) {
-    const response = await getTemplates(spaceId, typeId, { offset, limit: apiLimitMax });
-    allTemplates.push(...response.templates);
-    hasMore = response.pagination.has_more;
-    offset += apiLimitMax;
-  }
-
-  return allTemplates;
+  return collectPages(async (offset, limit) => {
+    const result = await getTemplates(spaceId, typeId, { offset, limit });
+    return { items: result.templates, pagination: result.pagination };
+  });
 }
 
 /**
@@ -109,4 +97,33 @@ export async function fetchTypeKeysForLists(spaces: Space[]): Promise<string[]> 
       .map((type) => type.key),
   );
   return Array.from(listTypeKeys);
+}
+
+export async function fetchSearchTypeKeys(spaces: Space[]) {
+  const allTypes = await getAllTypesFromSpaces(spaces);
+  const tasks = allTypes.filter((t) => t.layout === ObjectLayout.Action).map((t) => t.key);
+  const lists = allTypes
+    .filter((t) => t.layout === ObjectLayout.Set || t.layout === ObjectLayout.Collection)
+    .map((t) => t.key);
+  const excluded = new Set([
+    bundledTypeKeys.audio,
+    bundledTypeKeys.chat,
+    bundledTypeKeys.file,
+    bundledTypeKeys.image,
+    bundledTypeKeys.object_type,
+    bundledTypeKeys.tag,
+    bundledTypeKeys.template,
+    bundledTypeKeys.video,
+    bundledTypeKeys.set,
+    bundledTypeKeys.collection,
+    bundledTypeKeys.bookmark,
+    bundledTypeKeys.participant,
+    ...tasks,
+    ...lists,
+  ]);
+  return {
+    tasks: [...new Set(tasks)],
+    lists: [...new Set(lists)],
+    pages: [...new Set(allTypes.map((t) => t.key).filter((key) => !excluded.has(key)))],
+  };
 }

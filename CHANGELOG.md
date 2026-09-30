@@ -1,3 +1,13 @@
+## [Local reliability and search improvements] - 2026-10-01
+
+- Preserve custom creation focus, recently-modified touch, and Raycast 2 runtime support.
+- Fix tag preservation under name sorting and keep full-text server search hits.
+- Recover collection association separately after successful object creation.
+- Send only changed edit fields; load all selector metadata.
+- Scope caches and pins to the service/account, share metadata requests, and add bounded safe-read retries, cancellation and full-response timeouts.
+- Add task completion and file/image search filters, paginated AI search, and confirmed AI object updates.
+- Add regression tests and a reproducible CI build/check pipeline.
+
 # Anytype Changelog
 
 ## [Dependency Updates] - {PR_MERGE_DATE}

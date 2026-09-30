@@ -1,13 +1,15 @@
 import { getPreferenceValues } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { search } from "../api";
 import { SortDirection } from "../models";
 import { apiLimit } from "../utils";
+import { getCacheNamespace } from "../utils/cacheScope";
 
 export function useSearch(spaceId: string, query: string, types: string[], config?: { execute?: boolean }) {
+  const abortable = useRef<AbortController | null>(null);
   const { data, error, isLoading, mutate, pagination } = useCachedPromise(
-    (spaceId: string, query: string, types: string[]) => async (options: { page: number }) => {
+    (_cacheScope: string, spaceId: string, query: string, types: string[]) => async (options: { page: number }) => {
       const offset = options.page * apiLimit;
       const sortPreference = getPreferenceValues().sort;
       const sortDirection = sortPreference === "name" ? SortDirection.Ascending : SortDirection.Descending;
@@ -15,7 +17,7 @@ export function useSearch(spaceId: string, query: string, types: string[], confi
       const response = await search(
         spaceId,
         { query, types, sort: { property_key: sortPreference, direction: sortDirection } },
-        { offset, limit: apiLimit },
+        { offset, limit: apiLimit, signal: abortable.current?.signal },
       );
 
       return {
@@ -23,9 +25,10 @@ export function useSearch(spaceId: string, query: string, types: string[], confi
         hasMore: response.pagination.has_more,
       };
     },
-    [spaceId, query, types],
+    [getCacheNamespace(), spaceId, query, types],
     {
       keepPreviousData: true,
+      abortable,
       execute: !!spaceId && config?.execute !== false,
     },
   );

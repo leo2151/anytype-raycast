@@ -6,6 +6,7 @@ export interface Pagination {
 }
 
 export interface PaginatedResponse<T> {
+  all_stores_loaded?: boolean;
   data: T[];
   pagination: Pagination;
 }

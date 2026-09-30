@@ -2,10 +2,11 @@ import { useCachedPromise } from "@raycast/utils";
 import { getMember } from "../api";
 import { Member } from "../models";
 import { errorConnectionMessage, ErrorWithStatus, getPinned, removePinned } from "../utils";
+import { getCacheNamespace } from "../utils/cacheScope";
 
-export function usePinnedMembers(key: string) {
+export function usePinnedMembers(key: string, config?: { execute?: boolean }) {
   const { data, error, isLoading, mutate } = useCachedPromise(
-    async (key) => {
+    async (_cacheScope: string, key) => {
       const pinnedMembers = await getPinned(key);
       const members: Member[] = [];
 
@@ -25,9 +26,10 @@ export function usePinnedMembers(key: string) {
 
       return members;
     },
-    [key],
+    [getCacheNamespace(), key],
     {
       keepPreviousData: true,
+      execute: config?.execute !== false,
     },
   );
 

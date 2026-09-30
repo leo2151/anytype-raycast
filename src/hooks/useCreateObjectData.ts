@@ -2,6 +2,7 @@ import { showFailureToast, useCachedPromise } from "@raycast/utils";
 import { useEffect, useMemo, useState } from "react";
 import { CreateObjectFormValues } from "../components";
 import { bundledTypeKeys, fetchAllTemplatesForSpace, fetchAllTypesForSpace } from "../utils";
+import { getCacheNamespace } from "../utils/cacheScope";
 import { useSearch } from "./useSearch";
 import { useSpaces } from "./useSpaces";
 
@@ -12,7 +13,7 @@ export function useCreateObjectData(initialValues?: CreateObjectFormValues) {
   const [selectedListId, setSelectedListId] = useState(initialValues?.listId || "");
   const [listSearchText, setListSearchText] = useState("");
 
-  const { spaces, spacesError, isLoadingSpaces } = useSpaces();
+  const { spaces, spacesError, isLoadingSpaces } = useSpaces(undefined, { all: true });
   const {
     objects: lists,
     objectsError: listsError,
@@ -35,7 +36,11 @@ export function useCreateObjectData(initialValues?: CreateObjectFormValues) {
     data: allTypes,
     error: typesError,
     isLoading: isLoadingTypes,
-  } = useCachedPromise(fetchAllTypesForSpace, [selectedSpaceId], { execute: !!selectedSpaceId });
+  } = useCachedPromise(
+    (_cacheScope: string, ...args: Parameters<typeof fetchAllTypesForSpace>) => fetchAllTypesForSpace(...args),
+    [getCacheNamespace(), selectedSpaceId],
+    { execute: !!selectedSpaceId },
+  );
 
   const types = useMemo(() => {
     if (!allTypes) return [];
@@ -46,10 +51,14 @@ export function useCreateObjectData(initialValues?: CreateObjectFormValues) {
     data: templates,
     error: templatesError,
     isLoading: isLoadingTemplates,
-  } = useCachedPromise(fetchAllTemplatesForSpace, [selectedSpaceId, selectedTypeId], {
-    execute: !!selectedSpaceId && !!selectedTypeId,
-    initialData: [],
-  });
+  } = useCachedPromise(
+    (_cacheScope: string, ...args: Parameters<typeof fetchAllTemplatesForSpace>) => fetchAllTemplatesForSpace(...args),
+    [getCacheNamespace(), selectedSpaceId, selectedTypeId],
+    {
+      execute: !!selectedSpaceId && !!selectedTypeId,
+      initialData: [],
+    },
+  );
 
   useEffect(() => {
     if (spacesError || typesError || templatesError || listsError) {

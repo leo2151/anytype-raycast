@@ -14,9 +14,19 @@ export interface SearchRequest {
   query: string;
   types: string[];
   sort?: SortOptions;
+  filters?: SearchFilters;
 }
 
 export interface SortOptions {
   property_key: SortProperty;
   direction: SortDirection;
+}
+
+export interface SearchFilters {
+  operator: "and" | "or";
+  conditions?: (
+    | { property_key: string; condition: "eq"; checkbox: boolean }
+    | { property_key: string; condition: "gte"; date: string }
+  )[];
+  filters?: SearchFilters[];
 }

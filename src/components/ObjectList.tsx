@@ -40,6 +40,10 @@ export enum ViewType {
   tasks = "Task",
   lists = "List",
   bookmarks = "Bookmark",
+  files = "File",
+  images = "Image",
+  incompleteTasks = "Open Task",
+  completedTasks = "Completed Task",
 }
 
 export function ObjectList({ space }: ObjectListProps) {
@@ -50,26 +54,36 @@ export function ObjectList({ space }: ObjectListProps) {
     space.id,
     searchText,
     [],
+    { execute: currentView === ViewType.objects },
   );
-  const { types, typesError, isLoadingTypes, mutateTypes, typesPagination } = useTypes(space.id, searchText);
+  const { types, typesError, isLoadingTypes, mutateTypes, typesPagination } = useTypes(space.id, searchText, {
+    execute: currentView === ViewType.types,
+  });
   const { properties, propertiesError, isLoadingProperties, mutateProperties, propertiesPagination } = useProperties(
     space.id,
     searchText,
+    { execute: currentView === ViewType.properties },
   );
   const { members, membersError, isLoadingMembers, mutateMembers, membersPagination } = useMembers(
     space.id,
     searchText,
+    { execute: currentView === ViewType.members },
   );
   const { pinnedObjects, pinnedObjectsError, isLoadingPinnedObjects, mutatePinnedObjects } = usePinnedObjects(
     localStorageKeys.suffixForViewsPerSpace(space.id, ViewType.objects),
+    { execute: currentView === ViewType.objects },
   );
   const { pinnedTypes, pinnedTypesError, isLoadingPinnedTypes, mutatePinnedTypes } = usePinnedTypes(
     localStorageKeys.suffixForViewsPerSpace(space.id, ViewType.types),
+    { execute: currentView === ViewType.types },
   );
   const { pinnedProperties, pinnedPropertiesError, isLoadingPinnedProperties, mutatePinnedProperties } =
-    usePinnedProperties(localStorageKeys.suffixForViewsPerSpace(space.id, ViewType.properties));
+    usePinnedProperties(localStorageKeys.suffixForViewsPerSpace(space.id, ViewType.properties), {
+      execute: currentView === ViewType.properties,
+    });
   const { pinnedMembers, pinnedMembersError, isLoadingPinnedMembers, mutatePinnedMembers } = usePinnedMembers(
     localStorageKeys.suffixForViewsPerSpace(space.id, ViewType.members),
+    { execute: currentView === ViewType.members },
   );
   const [pagination, setPagination] = useState(objectsPagination);
 
@@ -236,14 +250,12 @@ export function ObjectList({ space }: ObjectListProps) {
 
   const { processedPinned, processedRegular } = getCurrentItems();
   const isLoading =
-    isLoadingObjects ||
-    isLoadingTypes ||
-    isLoadingProperties ||
-    isLoadingMembers ||
-    isLoadingPinnedObjects ||
-    isLoadingPinnedTypes ||
-    isLoadingPinnedProperties ||
-    isLoadingPinnedMembers;
+    {
+      [ViewType.objects]: isLoadingObjects || isLoadingPinnedObjects,
+      [ViewType.types]: isLoadingTypes || isLoadingPinnedTypes,
+      [ViewType.properties]: isLoadingProperties || isLoadingPinnedProperties,
+      [ViewType.members]: isLoadingMembers || isLoadingPinnedMembers,
+    }[currentView as ViewType.objects | ViewType.types | ViewType.properties | ViewType.members] ?? false;
 
   return (
     <List

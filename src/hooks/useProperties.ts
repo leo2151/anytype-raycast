@@ -1,11 +1,12 @@
 import { useCachedPromise } from "@raycast/utils";
 import { useMemo } from "react";
 import { getProperties } from "../api";
+import { getCacheNamespace } from "../utils/cacheScope";
 import { apiLimit } from "../utils/constant";
 
 export function useProperties(spaceId: string, searchText?: string, config?: { execute: boolean }) {
   const { data, error, isLoading, mutate, pagination } = useCachedPromise(
-    (spaceId: string, searchText?: string) => async (options: { page: number }) => {
+    (_cacheScope: string, spaceId: string, searchText?: string) => async (options: { page: number }) => {
       const offset = options.page * apiLimit;
       const response = await getProperties(spaceId, { offset, limit: apiLimit, name: searchText });
 
@@ -14,7 +15,7 @@ export function useProperties(spaceId: string, searchText?: string, config?: { e
         hasMore: response.pagination.has_more,
       };
     },
-    [spaceId, searchText],
+    [getCacheNamespace(), spaceId, searchText],
     {
       keepPreviousData: true,
       execute: !!spaceId && config?.execute !== false,

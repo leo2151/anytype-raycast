@@ -1,5 +1,5 @@
 import { Tool } from "@raycast/api";
-import { createObject, getSpace, getType } from "../api";
+import { createObjectRaw as createObject, getSpace, getType, updateObjectRaw as updateObject } from "../api";
 import { CreateObjectRequest, IconFormat, PropertyLinkWithValue } from "../models";
 import { bundledPropKeys } from "../utils";
 
@@ -95,15 +95,22 @@ export default async function tool({ spaceId, type_key, name, icon, description,
     throw new Error("Failed to create object");
   }
 
+  // Touch the object to update `last_modified_date` so it appears in "recently modified" views
+  try {
+    await updateObject(spaceId, object.id, { name: object.name });
+  } catch {
+    // Non-critical: object was created successfully, just won't appear at top of recent list
+  }
+
   return {
     object: object.object,
     name: object.name,
     id: object.id,
     spaceId: object.space_id,
     type: {
-      name: object.type.name,
-      id: object.type.id,
-      type_key: object.type.key,
+      name: object.type?.name,
+      id: object.type?.id,
+      type_key: object.type?.key,
     },
     snippet: object.snippet,
     properties: object.properties,

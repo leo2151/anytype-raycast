@@ -1,15 +1,13 @@
-import { Icon, Image, List } from "@raycast/api";
+import { Action, ActionPanel, Icon, Image, List } from "@raycast/api";
 import { showFailureToast } from "@raycast/utils";
 import { useEffect, useMemo, useState } from "react";
 import { EmptyViewObject, EnsureAuthenticated, ObjectListItem, ViewType } from "./components";
 import { useGlobalSearch, usePinnedObjects, useSpaces } from "./hooks";
-import { SpaceObject } from "./models";
+import { SearchFilters, SpaceObject } from "./models";
 import {
   bundledTypeKeys,
   defaultTintColor,
-  fetchTypeKeysForLists,
-  fetchTypeKeysForPages,
-  fetchTypesKeysForTasks,
+  fetchSearchTypeKeys,
   getSectionTitle,
   localStorageKeys,
   pluralize,
@@ -28,19 +26,41 @@ export default function Command() {
 
 function Search() {
   const [searchText, setSearchText] = useState("");
-  const [types, setTypes] = useState<string[]>([]);
   const [spaceIcons, setSpaceIcons] = useState<Map<string, Image.ImageLike>>(new Map());
   const [currentView, setCurrentView] = useState<ViewType>(ViewType.objects);
   const [typeKeysForPages, setTypeKeysForPages] = useState<string[]>([]);
   const [typeKeysForTasks, setTypeKeysForTasks] = useState<string[]>([]);
   const [typeKeysForLists, setTypeKeysForLists] = useState<string[]>([]);
 
-  const { objects, objectsError, isLoadingObjects, mutateObjects, objectsPagination } = useGlobalSearch(
-    searchText,
-    types,
-    { execute: currentView === ViewType.objects || types.length > 0 }, // only execute search when viewing all objects or when specific types selected
-  );
-  const { spaces, spacesError, isLoadingSpaces } = useSpaces();
+  const types = useMemo(() => {
+    const viewToType: Partial<Record<ViewType, string[]>> = {
+      [ViewType.objects]: [],
+      [ViewType.pages]: typeKeysForPages,
+      [ViewType.tasks]: typeKeysForTasks,
+      [ViewType.incompleteTasks]: typeKeysForTasks,
+      [ViewType.completedTasks]: typeKeysForTasks,
+      [ViewType.files]: [bundledTypeKeys.file, bundledTypeKeys.image, bundledTypeKeys.audio, bundledTypeKeys.video],
+      [ViewType.images]: [bundledTypeKeys.image],
+      [ViewType.lists]: typeKeysForLists,
+      [ViewType.bookmarks]: [bundledTypeKeys.bookmark],
+    };
+    return viewToType[currentView] ?? [];
+  }, [currentView, typeKeysForPages, typeKeysForTasks, typeKeysForLists]);
+
+  const filters: SearchFilters | undefined =
+    currentView === ViewType.incompleteTasks || currentView === ViewType.completedTasks
+      ? {
+          operator: "and",
+          conditions: [{ property_key: "done", condition: "eq", checkbox: currentView === ViewType.completedTasks }],
+        }
+      : undefined;
+  const { allStoresLoaded, objects, objectsError, isLoadingObjects, mutateObjects, objectsPagination } =
+    useGlobalSearch(
+      searchText,
+      types,
+      { execute: currentView === ViewType.objects || types.length > 0, filters }, // only execute search when viewing all objects or when specific types selected
+    );
+  const { spaces, spacesError, isLoadingSpaces } = useSpaces(undefined, { all: true });
   const { pinnedObjects, pinnedObjectsError, isLoadingPinnedObjects, mutatePinnedObjects } = usePinnedObjects(
     localStorageKeys.suffixForGlobalSearch,
   );
@@ -52,50 +72,22 @@ function Search() {
     }
   }, [spaces]);
 
-  // Fetch unique keys for pages view
   useEffect(() => {
-    const fetchTypesForPages = async () => {
-      if (spaces) {
-        const pagesTypes = await fetchTypeKeysForPages(spaces, typeKeysForTasks, typeKeysForLists);
-        setTypeKeysForPages(pagesTypes);
-      }
+    let cancelled = false;
+    fetchSearchTypeKeys(spaces)
+      .then((keys) => {
+        if (cancelled) return;
+        setTypeKeysForPages(keys.pages);
+        setTypeKeysForTasks(keys.tasks);
+        setTypeKeysForLists(keys.lists);
+      })
+      .catch((error) => {
+        if (!cancelled) showFailureToast(error, { title: "Failed to load types" });
+      });
+    return () => {
+      cancelled = true;
     };
-    fetchTypesForPages();
-  }, [spaces, typeKeysForTasks, typeKeysForLists]);
-
-  // Fetch unique keys for tasks view
-  useEffect(() => {
-    const fetchTypesForTasks = async () => {
-      if (spaces) {
-        const tasksTypes = await fetchTypesKeysForTasks(spaces);
-        setTypeKeysForTasks(tasksTypes);
-      }
-    };
-    fetchTypesForTasks();
   }, [spaces]);
-
-  // Fetch unique keys for lists view
-  useEffect(() => {
-    const fetchTypesForLists = async () => {
-      if (spaces) {
-        const listTypes = await fetchTypeKeysForLists(spaces);
-        setTypeKeysForLists(listTypes);
-      }
-    };
-    fetchTypesForLists();
-  }, [spaces]);
-
-  // Set object types based on the selected filter
-  useEffect(() => {
-    const viewToType: Partial<Record<ViewType, string[]>> = {
-      [ViewType.objects]: [],
-      [ViewType.pages]: typeKeysForPages,
-      [ViewType.tasks]: typeKeysForTasks,
-      [ViewType.lists]: typeKeysForLists,
-      [ViewType.bookmarks]: [bundledTypeKeys.bookmark],
-    };
-    setTypes(viewToType[currentView] ?? []);
-  }, [currentView, typeKeysForPages, typeKeysForTasks, typeKeysForLists]);
 
   useEffect(() => {
     if (objectsError || spacesError || pinnedObjectsError) {
@@ -126,21 +118,15 @@ function Search() {
     };
   };
 
-  // Helper to filter objects by the search term
-  const filterObjectsBySearchTerm = (objects: SpaceObject[], searchTerm: string) => {
-    const lowerCaseSearchTerm = searchTerm.toLowerCase();
-    return objects.filter(
-      (object) =>
-        object.name.toLowerCase().includes(lowerCaseSearchTerm) ||
-        object.snippet.toLowerCase().includes(lowerCaseSearchTerm),
-    );
-  };
-
   // Process pinned objects
   const processedPinnedObjects = pinnedObjects?.length
-    ? pinnedObjects
+    ? (searchText || filters
+        ? objects.filter((object) =>
+            pinnedObjects.some((pin) => pin.id === object.id && pin.space_id === object.space_id),
+          )
+        : pinnedObjects
+      )
         .filter((object) => types.length === 0 || types.includes(object.type.key))
-        .filter((object) => filterObjectsBySearchTerm([object], searchText).length > 0)
         .map((object) => processObjectWithSpaceIcon(object, true))
     : [];
 
@@ -149,7 +135,6 @@ function Search() {
     .filter(
       (object) => !pinnedObjects?.some((pinned) => pinned.id === object.id && pinned.space_id === object.space_id),
     )
-    .filter((object) => filterObjectsBySearchTerm([object], searchText).length > 0)
     .map((object) => processObjectWithSpaceIcon(object, false));
 
   return (
@@ -158,6 +143,7 @@ function Search() {
       onSearchTextChange={setSearchText}
       searchBarPlaceholder={searchBarPlaceholder}
       pagination={objectsPagination}
+      filtering={false}
       throttle={true}
       searchBarAccessory={
         <List.Dropdown
@@ -191,10 +177,26 @@ function Search() {
               value={ViewType.bookmarks}
               icon={{ source: "icons/type/bookmark.svg", tintColor: defaultTintColor }}
             />
+            <List.Dropdown.Item title="Open Tasks" value={ViewType.incompleteTasks} icon={Icon.Circle} />
+            <List.Dropdown.Item title="Completed Tasks" value={ViewType.completedTasks} icon={Icon.CheckCircle} />
+            <List.Dropdown.Item title="Files" value={ViewType.files} icon={Icon.Document} />
+            <List.Dropdown.Item title="Images" value={ViewType.images} icon={Icon.Image} />
           </List.Dropdown.Section>
         </List.Dropdown>
       }
     >
+      {allStoresLoaded === false && (
+        <List.Item
+          title="Some channels are still loading"
+          subtitle="Refresh to include more results"
+          icon={Icon.Clock}
+          actions={
+            <ActionPanel>
+              <Action title="Refresh Results" icon={Icon.ArrowClockwise} onAction={() => mutateObjects()} />
+            </ActionPanel>
+          }
+        />
+      )}
       {processedPinnedObjects.length > 0 && (
         <List.Section
           title="Pinned"
@@ -224,7 +226,11 @@ function Search() {
       {processedRegularObjects.length > 0 ? (
         <List.Section
           title={getSectionTitle(searchText)}
-          subtitle={pluralize(processedRegularObjects.length, currentView, { withNumber: true })}
+          subtitle={
+            allStoresLoaded === false
+              ? "Some channels are still loading — refresh for more results"
+              : pluralize(processedRegularObjects.length, currentView, { withNumber: true })
+          }
         >
           {processedRegularObjects.map((object, index) => (
             <ObjectListItem

@@ -2,19 +2,21 @@ import { useCachedPromise } from "@raycast/utils";
 import { useMemo } from "react";
 import { getTemplates } from "../api";
 import { apiLimit } from "../utils";
+import { getCacheNamespace } from "../utils/cacheScope";
 
 export function useTemplates(spaceId: string, typeId: string, searchText?: string) {
   const { data, error, isLoading, mutate, pagination } = useCachedPromise(
-    (spaceId: string, typeId: string, searchText?: string) => async (options: { page: number }) => {
-      const offset = options.page * apiLimit;
-      const response = await getTemplates(spaceId, typeId, { offset, limit: apiLimit, name: searchText });
+    (_cacheScope: string, spaceId: string, typeId: string, searchText?: string) =>
+      async (options: { page: number }) => {
+        const offset = options.page * apiLimit;
+        const response = await getTemplates(spaceId, typeId, { offset, limit: apiLimit, name: searchText });
 
-      return {
-        data: response.templates,
-        hasMore: response.pagination.has_more,
-      };
-    },
-    [spaceId, typeId, searchText],
+        return {
+          data: response.templates,
+          hasMore: response.pagination.has_more,
+        };
+      },
+    [getCacheNamespace(), spaceId, typeId, searchText],
     {
       keepPreviousData: true,
       execute: !!spaceId && !!typeId,

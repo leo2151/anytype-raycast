@@ -2,10 +2,11 @@ import { useCachedPromise } from "@raycast/utils";
 import { getProperty } from "../api";
 import { Property } from "../models";
 import { errorConnectionMessage, ErrorWithStatus, getPinned, removePinned } from "../utils";
+import { getCacheNamespace } from "../utils/cacheScope";
 
-export function usePinnedProperties(key: string) {
+export function usePinnedProperties(key: string, config?: { execute?: boolean }) {
   const { data, error, isLoading, mutate } = useCachedPromise(
-    async (key: string) => {
+    async (_cacheScope: string, key: string) => {
       const pinnedProperties = await getPinned(key);
       const properties: Property[] = [];
 
@@ -31,9 +32,10 @@ export function usePinnedProperties(key: string) {
 
       return properties;
     },
-    [key],
+    [getCacheNamespace(), key],
     {
       keepPreviousData: true,
+      execute: config?.execute !== false,
     },
   );
 

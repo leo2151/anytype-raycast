@@ -11,6 +11,7 @@ import {
   SpaceObjectWithBody,
 } from "../models";
 import { bundledPropKeys, getIconWithFallback, getNameWithSnippetFallback, linkedItemsMax, propKeys } from "../utils";
+import { mapConcurrent } from "../utils/pagination";
 import { mapTag } from "./properties";
 import { mapType } from "./types";
 
@@ -21,29 +22,28 @@ import { mapType } from "./types";
 export async function mapObjects(objects: RawSpaceObject[]): Promise<SpaceObject[]> {
   const { sort } = getPreferenceValues();
 
-  return Promise.all(
-    objects.map(async (object) => {
-      return {
-        ...object,
-        icon: await getIconWithFallback(object.icon, object.layout, object.type),
-        name: getNameWithSnippetFallback(object.name, object.snippet),
-        type: await mapType(object.type),
-        properties: await Promise.all(
-          (object.properties?.filter((property) => {
-            if (sort === SortProperty.Name) {
-              // When sorting by name, keep the 'LastModifiedDate' property for tooltip purposes
-              return property.key === SortProperty.LastModifiedDate;
-            }
-            return (
-              property.key === sort ||
-              property.key === bundledPropKeys.source || // keep source to open bookmarks in browser
-              property.key === propKeys.tag // keep tags for submenu and accessories
-            );
-          }) || []) as PropertyWithValue[],
-        ),
-      };
-    }),
-  );
+  return mapConcurrent(objects, async (object) => {
+    return {
+      ...object,
+      icon: await getIconWithFallback(object.icon, object.layout, object.type),
+      name: getNameWithSnippetFallback(object.name, object.snippet),
+      type: await mapType(object.type),
+      properties: await Promise.all(
+        (object.properties?.filter((property) => {
+          if (property.key === bundledPropKeys.source || property.key === propKeys.tag) return true;
+          if (sort === SortProperty.Name) {
+            // When sorting by name, keep the 'LastModifiedDate' property for tooltip purposes
+            return property.key === SortProperty.LastModifiedDate;
+          }
+          return (
+            property.key === sort ||
+            property.key === bundledPropKeys.source || // keep source to open bookmarks in browser
+            property.key === propKeys.tag // keep tags for submenu and accessories
+          );
+        }) || []) as PropertyWithValue[],
+      ),
+    };
+  });
 }
 
 /**

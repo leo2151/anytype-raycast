@@ -2,10 +2,19 @@ import { useCachedPromise } from "@raycast/utils";
 import { useMemo } from "react";
 import { getSpaces } from "../api";
 import { apiLimit } from "../utils";
+import { getCacheNamespace } from "../utils/cacheScope";
+import { collectPages } from "../utils/pagination";
 
-export function useSpaces(searchText?: string) {
+export function useSpaces(searchText?: string, config?: { all?: boolean }) {
   const { data, error, isLoading, mutate, pagination } = useCachedPromise(
-    (searchText?: string) => async (options: { page: number }) => {
+    (_cacheScope: string, searchText: string | undefined, all: boolean) => async (options: { page: number }) => {
+      if (all) {
+        const spaces = await collectPages(async (offset, limit) => {
+          const result = await getSpaces({ offset, limit, name: searchText });
+          return { items: result.spaces, pagination: result.pagination };
+        });
+        return { data: spaces, hasMore: false };
+      }
       const offset = options.page * apiLimit;
       const response = await getSpaces({ offset, limit: apiLimit, name: searchText });
 
@@ -14,7 +23,7 @@ export function useSpaces(searchText?: string) {
         hasMore: response.pagination.has_more,
       };
     },
-    [searchText],
+    [getCacheNamespace(), searchText, config?.all === true],
     {
       keepPreviousData: true,
     },
