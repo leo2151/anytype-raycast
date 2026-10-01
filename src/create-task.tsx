@@ -140,7 +140,7 @@ function LoadTaskForm(props: Omit<Parameters<typeof CreateTaskForm>[0], "type" |
         template = (await getRawObject(config.spaceId, config.templateId, BodyFormat.Markdown)).object;
         if (template.archived) throw new Error("The saved template is archived. Update your settings.");
       }
-      return { type, template };
+      return { type, template, types };
     },
     [getCacheNamespace(), props.config],
   );
@@ -158,5 +158,5 @@ function LoadTaskForm(props: Omit<Parameters<typeof CreateTaskForm>[0], "type" |
         <Form.Description text={error ? String(error.message) : "Loading Task and template defaults…"} />
       </Form>
     );
-  return <CreateTaskForm {...props} type={data.type} template={data.template} />;
+  return <CreateTaskForm {...props} type={data.type} template={data.template} referenceTypes={data.types} />;
 }

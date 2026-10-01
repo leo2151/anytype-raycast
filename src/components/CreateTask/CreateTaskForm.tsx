@@ -3,9 +3,10 @@ import { showFailureToast, useCachedState } from "@raycast/utils";
 import { Fragment as ReactFragment, useRef, useState } from "react";
 import { addObjectsToList, createObjectRaw, updateObjectRaw } from "../../api";
 import { useSearch, useTagsMap } from "../../hooks";
-import { RawProperty, RawSpaceObjectWithBody, Space, Type } from "../../models";
+import { PropertyFormat, RawProperty, RawSpaceObjectWithBody, Space, Type } from "../../models";
 import { bundledPropKeys } from "../../utils";
 import { getCacheNamespace } from "../../utils/cacheScope";
+import { ReferenceTypePreferences, resolveReferenceTypes } from "../../utils/referenceTypes";
 import {
   initialTaskDraft,
   nextTaskDraft,
@@ -16,6 +17,7 @@ import {
   TaskValue,
 } from "../../utils/task";
 import { isTaskChoice, TaskLayout, taskPropertyGroups } from "../../utils/taskLayout";
+import { ReferenceTypeSettings } from "./ReferenceTypeSettings";
 import { TaskChoiceGroup } from "./TaskChoiceGroup";
 import { TaskPropertyField } from "./TaskPropertyField";
 
@@ -24,12 +26,23 @@ interface Props {
   space: Space;
   type: Type;
   template?: RawSpaceObjectWithBody;
+  referenceTypes?: Type[];
   saved?: TaskDraft;
   title?: string;
   persist: (draft: TaskDraft | undefined) => Promise<void>;
   onConfigure: () => void;
 }
-export function CreateTaskForm({ config, space, type, template, saved, title, persist, onConfigure }: Props) {
+export function CreateTaskForm({
+  config,
+  space,
+  type,
+  template,
+  saved,
+  title,
+  persist,
+  onConfigure,
+  referenceTypes = [],
+}: Props) {
   const [draft, setDraft] = useState(() => initialTaskDraft(config, template, saved, title));
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
@@ -37,6 +50,14 @@ export function CreateTaskForm({ config, space, type, template, saved, title, pe
   const [nameError, setNameError] = useState<string>();
   const [listQuery, setListQuery] = useState("");
   const [layout, setLayout] = useCachedState<TaskLayout>(`create-task-layout:${getCacheNamespace()}`, "compact");
+  const [referencePreferences, setReferencePreferences] = useCachedState<ReferenceTypePreferences>(
+    `create-task-reference-types:${getCacheNamespace()}:${config.spaceId}`,
+    {},
+  );
+  const [editingReferenceTypes, setEditingReferenceTypes] = useState(false);
+  const referenceProperties = type.properties.filter(
+    (p) => p.format === PropertyFormat.Objects && !Object.values(bundledPropKeys).includes(p.key),
+  );
   const fields = taskFields(type.properties);
   const main = [fields.when, fields.due, fields.projects, fields.flag].filter((p): p is RawProperty => !!p);
   const other = type.properties.filter(
@@ -101,6 +122,11 @@ export function CreateTaskForm({ config, space, type, template, saved, title, pe
         onChange={(v) => propertyChange(p, v)}
         tags={tagsMap[p.id]}
         valueLabels={valueLabels[p.key]}
+        referenceFilter={
+          p.format === PropertyFormat.Objects
+            ? resolveReferenceTypes(p, referenceTypes, referencePreferences[p.key])
+            : undefined
+        }
       />
     );
   }
@@ -194,6 +220,20 @@ export function CreateTaskForm({ config, space, type, template, saved, title, pe
       </Form>
     );
 
+  if (editingReferenceTypes)
+    return (
+      <ReferenceTypeSettings
+        properties={referenceProperties}
+        types={referenceTypes}
+        preferences={referencePreferences}
+        onCancel={() => setEditingReferenceTypes(false)}
+        onSave={(next) => {
+          setReferencePreferences(next);
+          setEditingReferenceTypes(false);
+        }}
+      />
+    );
+
   return (
     <Form
       navigationTitle="Create Task"
@@ -213,6 +253,15 @@ export function CreateTaskForm({ config, space, type, template, saved, title, pe
             shortcut={{ modifiers: ["cmd", "shift"], key: "l" }}
             onAction={() => setLayout(layout === "compact" ? "standard" : "compact")}
           />
+          {referenceProperties.length > 0 && (
+            <Action
+              title="Reference Type Filters"
+              icon={Icon.Filter}
+              onAction={() => {
+                if (!lock.current) setEditingReferenceTypes(true);
+              }}
+            />
+          )}
           <Action
             title={draft.expanded ? "Hide Additional Properties" : "Show Additional Properties"}
             icon={Icon.ChevronDown}

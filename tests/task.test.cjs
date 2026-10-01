@@ -121,7 +121,7 @@ test("empty titles, wrong types, invalid dates and invalid numbers are rejected 
 
 function taskFormHarness(api) {
   const state = [];
-  let layout = "compact";
+  const cache = new Map();
   let cursor = 0;
   const receipts = [];
   const jsx = (type, props) => ({ type, props });
@@ -137,7 +137,7 @@ function taskFormHarness(api) {
     },
     "@raycast/utils": {
       showFailureToast: async () => {},
-      useCachedState: () => [layout, (next) => (layout = next)],
+      useCachedState: (key, initial) => [cache.has(key) ? cache.get(key) : initial, (next) => cache.set(key, next)],
     },
     react: {
       useState: (initial) => {
@@ -265,4 +265,22 @@ test("compact and standard layouts share the draft and keep City and Tag visible
   assert.equal(h.find(form, "Task Name").props.value, "Keep my title");
   assert.deepEqual(h.receipts.at(-1).changed, ["customCity"]);
   assert.equal(h.receipts.at(-1).properties.location, "office");
+});
+
+test("reference filter settings use local types and preserve the task draft and existing relations", () => {
+  const h = taskFormHarness({});
+  h.props.referenceTypes = [
+    { id: "local-project-type", key: "custom-project-key", name: "Project", plural_name: "Projects" },
+    { id: "local-place-type", key: "custom-place-key", name: "Place", plural_name: "Places" },
+  ];
+  let form = h.render();
+  assert.deepEqual(h.find(form, "Projects").props.referenceFilter.typeKeys, ["custom-project-key"]);
+  h.find(form, "Reference Type Filters").props.onAction();
+  const settings = h.render();
+  settings.props.onSave({ projects: { mode: "types", typeIds: ["local-project-type", "local-place-type"] } });
+  form = h.render();
+  assert.deepEqual(h.find(form, "Projects").props.referenceFilter.typeIds, ["local-project-type", "local-place-type"]);
+  assert.deepEqual(h.find(form, "Projects").props.value, ["project-a", "project-b"]);
+  assert.equal(h.find(form, "Task Name").props.value, "Capture task");
+  assert.deepEqual(h.receipts, []);
 });

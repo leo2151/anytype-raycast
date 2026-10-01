@@ -1,3 +1,9 @@
+## [Task reference type filters] - 2026-10-01
+
+- Filter Projects, Place, and other Create Task object relations by actual types in the current channel instead of searching every object.
+- Add per-field Reference Type Filters with automatic matching, multiple explicit types, and an explicit unrestricted option. Missing, ambiguous, or unavailable types block unfiltered searches.
+- Validate candidate type IDs and channel locally as well as filtering API requests. Preserve existing references, mark out-of-filter selections, and support loading additional result pages.
+
 ## [Compact task properties] - 2026-10-01
 
 - Combine compatible Task, Location, and GTD choices into native chip rows while keeping City, Tag, and other core properties directly editable.

@@ -25,6 +25,7 @@ Create tasks directly with your saved channel and Task template. The command ope
 - **Core properties stay visible**: Tag, City, Location, Place, Task Type, Status, Energy, and Time appear on the main form when those properties exist. Date, number, and object-reference properties keep their native inputs. Options come from your existing Anytype properties.
 - **Switch layout**: use Actions → Use Standard Layout / Use Compact Layout (`⌘⇧L`). The choice is remembered locally per account, and switching keeps the current draft.
 - **Additional properties**: use Actions → Show Additional Properties (`⌘⇧M`) for the body, collection, and remaining custom fields.
+- **Reference type filters**: Projects searches the actual Project type in the current channel; Place searches Place. Other object relations automatically match a unique type by key/name/plural name. Use Actions → Reference Type Filters to choose one or more allowed types per field, or explicitly allow all types. Missing or ambiguous matches never silently search everything. Filters are local to the account and channel; existing selections are preserved and marked when outside the filter. The API's property metadata does not expose the desktop's target-type restrictions, so these are extension-side filters.
 - **Create**: `⌘↵` saves the task. `⌘⇧↵` creates it and starts another, keeping the project and collection while resetting task-specific values. Unchanged template properties are preserved, and new tasks start incomplete.
 
 ### Create Object
