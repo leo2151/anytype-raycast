@@ -60,3 +60,17 @@ References used for the compatibility review:
 - [Anytype API changelog](https://developers.anytype.io/docs/reference/changelog/)
 - [Raycast useCachedPromise](https://developers.raycast.com/utilities/react-hooks/usecachedpromise)
 - The installed Anytype app's `/v1/docs/openapi.json` (checked locally, not published with private workspace data).
+
+## Create Task command (2026-10-01)
+
+- Independent **Create Task** command with an optional task-name argument and English UI.
+- First-run setup selects a channel and a real Task type; a unique Complex Task template is suggested when available. Settings are stored locally per API account/server, separately from Create Object. Personal channel and template IDs are not included in the repository.
+- Main fields: Task Name (autofocused), When, Due Date, Projects, Flag, and Notes. Matching custom properties requires the correct name/key and format. Unmatched or ambiguous properties remain in More Options.
+- More Options exposes collection membership, body text, tags, and other actual Task properties. Object references support multiple selections. Existing attachment defaults are preserved; attachment management stays in Anytype.
+- Template defaults are read before the form initializes. An empty body and icon are omitted from the request, unchanged properties stay inherited, and Done is explicitly false. Status remains independent from Done.
+- **Create Task** uses Command-Return. **Create and Continue** uses Command-Shift-Return; it retains the channel, template, projects and collection, while clearing title, notes, dates, body and Flag.
+- Local drafts use serialized storage writes. A successful create persists its object ID before follow-up work, so retrying a failed collection association or reopening recovery does not create another task.
+- **Actions → Change Channel or Template** updates only this command. Moving to another context drops incompatible property IDs and collection selections.
+- Existing Create Object and Quicklinks remain available. Their hotkeys are not reassigned automatically.
+
+Validation includes TypeScript, ESLint, regression tests with mocked writes, a Raycast build and live checks of the English UI, selected template and title focus. No real test tasks are created during automated regression tests.

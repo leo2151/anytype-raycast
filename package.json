@@ -24,6 +24,27 @@
       "mode": "view"
     },
     {
+      "name": "create-task",
+      "title": "Create Task",
+      "subtitle": "Anytype",
+      "description": "Quickly create a Task with optional scheduling, projects, and an important flag.",
+      "mode": "view",
+      "keywords": [
+        "task",
+        "todo",
+        "任务",
+        "新建任务"
+      ],
+      "arguments": [
+        {
+          "name": "title",
+          "placeholder": "Task name (optional)",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "browse-spaces",
       "title": "Browse Channels",
       "subtitle": "Anytype",

@@ -17,6 +17,18 @@ To get started, grant the extension access to your account using the local pairi
 
 ## Commands
 
+### Create Task
+
+Create tasks directly with your saved channel and Task template. The command opens with the task name focused; only a name is required.
+
+- **Task-first order**: Task Name → Important → Priority (Task Type, 4Type/quadrant, Status) → When / Due Date → Assigned / People → Effort (Energy, Time) → existing Resources / Location / Place → Notes → Projects / Tag. The title keeps autofocus; project organization comes after execution details.
+- **Compact layout** (default): compatible Priority, Effort, and Location choices share native chip rows. Choice chips include the original property name. Selecting a new value replaces a single-choice selection; multi-choice properties retain multiple values. Removing a chip clears only its property.
+- **Core properties stay visible**: Assigned and People remain separate, directly editable relations. Existing skill, experience, tool, equipment, material, or resource properties are promoted to the main form when present; no new Anytype properties are created. Tag, City, Location, Place, Task Type, 4Type, Status, Energy, and Time remain directly editable. Dates, numbers, and object references keep their native inputs.
+- **Switch layout**: use Actions → Use Standard Layout / Use Compact Layout (`⌘⇧L`). The choice is remembered locally per account, and switching keeps the current draft.
+- **Additional properties**: use Actions → Show Additional Properties (`⌘⇧M`) for the body, collection, and remaining custom fields.
+- **Reference type filters**: Projects searches the actual Project type in the current channel; Place searches Place. Assigned and People can automatically match a unique Person, Human, or Contact type; multiple matches require an explicit choice. Other object relations automatically match a unique type by key/name/plural name. Use Actions → Reference Type Filters (`⌘⇧F`) to choose one or more allowed types per field, or explicitly allow all types. Missing or ambiguous matches never silently search everything. Filters are local to the account and channel; existing selections are preserved and marked when outside the filter. The API's property metadata does not expose the desktop's target-type restrictions, so these are extension-side filters.
+- **Create**: `⌘↵` saves the task. `⌘⇧↵` creates it and starts another, keeping the project and collection while resetting task-specific values. Unchanged template properties are preserved, and new tasks start incomplete.
+
 ### Create Object
 
 Create new objects in your spaces directly from Raycast.

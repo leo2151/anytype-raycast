@@ -1,3 +1,29 @@
+## [Task-first capture order] - 2026-10-01
+
+- Put Important, Task Type, and the existing 4Type/quadrant at the top, followed by schedule, Assigned, People, effort, and execution requirements.
+- Keep assignees and related people separate and promote existing skill/tool/resource fields without creating or renaming Anytype properties.
+- Move Projects and Tag after execution details, preserve compact choices and draft values, and add a direct shortcut to reference-type settings.
+
+## [Task reference type filters] - 2026-10-01
+
+- Filter Projects, Place, and other Create Task object relations by actual types in the current channel instead of searching every object.
+- Add per-field Reference Type Filters with automatic matching, multiple explicit types, and an explicit unrestricted option. Missing, ambiguous, or unavailable types block unfiltered searches.
+- Validate candidate type IDs and channel locally as well as filtering API requests. Preserve existing references, mark out-of-filter selections, and support loading additional result pages.
+
+## [Compact task properties] - 2026-10-01
+
+- Combine compatible Task, Location, and GTD choices into native chip rows while keeping City, Tag, and other core properties directly editable.
+- Preserve each property's single-choice or multi-choice behavior, template values, and original API keys.
+- Add a remembered Compact / Standard layout switch without losing the task draft; move additional properties into Actions and merge destination/template details.
+- Keep date, number, and object-reference inputs in their native formats; add regression coverage for replacement, clearing, and draft preservation.
+
+## [Dedicated Create Task command] - 2026-10-01
+
+- Add an independent English Create Task command with an optional title argument, task-focused fields, and More Options for custom properties.
+- Preserve Task template defaults, always create incomplete tasks, and store command-specific settings locally.
+- Add continuous task capture, multi-object project selection, local drafts and persisted creation recovery.
+- Keep existing Create Object and Quicklinks unchanged.
+
 ## [Local reliability and search improvements] - 2026-10-01
 
 - Preserve custom creation focus, recently-modified touch, and Raycast 2 runtime support.
