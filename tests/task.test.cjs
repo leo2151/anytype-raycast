@@ -121,6 +121,7 @@ test("empty titles, wrong types, invalid dates and invalid numbers are rejected 
 
 function taskFormHarness(api) {
   const state = [];
+  let layout = "compact";
   let cursor = 0;
   const receipts = [];
   const jsx = (type, props) => ({ type, props });
@@ -134,7 +135,10 @@ function taskFormHarness(api) {
       showToast: async () => {},
       popToRoot: async () => {},
     },
-    "@raycast/utils": { showFailureToast: async () => {} },
+    "@raycast/utils": {
+      showFailureToast: async () => {},
+      useCachedState: () => [layout, (next) => (layout = next)],
+    },
     react: {
       useState: (initial) => {
         const i = cursor++;
@@ -151,6 +155,7 @@ function taskFormHarness(api) {
     "../../api": api,
     "../../hooks": { useSearch: () => ({ objects: [] }), useTagsMap: () => ({}) },
     "../../utils": { bundledPropKeys: { description: "description" } },
+    "../../utils/cacheScope": { getCacheNamespace: () => "test-account" },
     "./TaskPropertyField": { TaskPropertyField: "property" },
   });
   const props = {
@@ -167,6 +172,7 @@ function taskFormHarness(api) {
     return CreateTaskForm(props);
   };
   function find(node, title) {
+    if (Array.isArray(node)) return node.map((child) => find(child, title)).find(Boolean);
     if (!node || typeof node !== "object") return;
     if (node.props?.title === title) return node;
     for (const child of [node.props?.actions, ...[node.props?.children].flat()]) {
@@ -223,4 +229,40 @@ test("failed task creation preserves the unsaved title and does not enter recove
   const form = h.render();
   assert.equal(h.find(form, "Task Name").props.value, "Capture task");
   assert.equal(h.find(form, "Retry Adding to Collection"), undefined);
+});
+
+test("compact and standard layouts share the draft and keep City and Tag visible without More Options", async () => {
+  const h = taskFormHarness({});
+  h.props.title = undefined;
+  const city = { id: "city", key: "customCity", name: "City", format: "select" };
+  const location = { id: "location", key: "location", name: "Location", format: "select" };
+  const tag = { id: "tag", key: "tag", name: "Tag", format: "multi_select" };
+  h.props.type = { ...type, properties: [...type.properties, city, location, tag] };
+  h.props.saved = {
+    ...task.initialTaskDraft(config, template, undefined, "Keep my title"),
+    properties: { customCity: "shanghai", location: "office", tag: ["work"] },
+  };
+  let form = h.render();
+  const group = h.find(form, "Location");
+  assert.deepEqual(
+    group.props.properties.map((p) => p.key),
+    ["customCity", "location"],
+  );
+  group.props.onChange({ customCity: "beijing" });
+  form = h.render();
+  h.find(form, "Use Standard Layout").props.onAction();
+  form = h.render();
+  const fields = [];
+  const visit = (n) => {
+    if (Array.isArray(n)) return n.forEach(visit);
+    if (!n || !n.props) return;
+    if (n.props.property) fields.push(n);
+    visit(n.props.children);
+  };
+  visit(form);
+  assert.equal(fields.find((n) => n.props.property.key === "customCity").props.value, "beijing");
+  assert.deepEqual(fields.find((n) => n.props.property.key === "tag").props.value, ["work"]);
+  assert.equal(h.find(form, "Task Name").props.value, "Keep my title");
+  assert.deepEqual(h.receipts.at(-1).changed, ["customCity"]);
+  assert.equal(h.receipts.at(-1).properties.location, "office");
 });

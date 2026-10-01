@@ -1,3 +1,10 @@
+## [Compact task properties] - 2026-10-01
+
+- Combine compatible Task, Location, and GTD choices into native chip rows while keeping City, Tag, and other core properties directly editable.
+- Preserve each property's single-choice or multi-choice behavior, template values, and original API keys.
+- Add a remembered Compact / Standard layout switch without losing the task draft; move additional properties into Actions and merge destination/template details.
+- Keep date, number, and object-reference inputs in their native formats; add regression coverage for replacement, clearing, and draft preservation.
+
 ## [Dedicated Create Task command] - 2026-10-01
 
 - Add an independent English Create Task command with an optional title argument, task-focused fields, and More Options for custom properties.

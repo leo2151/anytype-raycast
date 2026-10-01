@@ -64,9 +64,10 @@ interface Props {
   value: TaskValue;
   onChange: (value: TaskValue) => void;
   tags?: Tag[];
+  valueLabels?: Record<string, string>;
 }
 export function TaskPropertyField(props: Props) {
-  const { property, title, value, onChange, tags = [] } = props;
+  const { property, title, value, onChange, tags = [], valueLabels = {} } = props;
   const common = { id: `property:${property.key}`, title: title ?? property.name };
   switch (property.format) {
     case PropertyFormat.Date:
@@ -91,7 +92,10 @@ export function TaskPropertyField(props: Props) {
         <Form.Dropdown {...common} value={String(value ?? "")} onChange={onChange}>
           <Form.Dropdown.Item value="" title="Not Set" />
           {value && !tags.some((t) => t.id === value) && (
-            <Form.Dropdown.Item value={String(value)} title="Template selection" />
+            <Form.Dropdown.Item
+              value={String(value)}
+              title={valueLabels[String(value)] ?? `Saved selection (${value})`}
+            />
           )}
           {tags.map((t) => (
             <Form.Dropdown.Item
@@ -110,7 +114,7 @@ export function TaskPropertyField(props: Props) {
           {ids
             .filter((id) => !tags.some((t) => t.id === id))
             .map((id) => (
-              <Form.TagPicker.Item key={id} value={id} title="Template tag" />
+              <Form.TagPicker.Item key={id} value={id} title={valueLabels[id] ?? `Saved selection (${id})`} />
             ))}
           {tags.map((t) => (
             <Form.TagPicker.Item

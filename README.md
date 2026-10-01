@@ -17,6 +17,16 @@ To get started, grant the extension access to your account using the local pairi
 
 ## Commands
 
+### Create Task
+
+Create tasks directly with your saved channel and Task template. The command opens with the task name focused; only a name is required.
+
+- **Compact layout** (default): select Task Type and Status in one row, City and Location in another, and Energy and Time in a GTD row. Choice chips include the original property name. Selecting a new value replaces a single-choice selection; multi-choice properties retain multiple values. Removing a chip clears only its property.
+- **Core properties stay visible**: Tag, City, Location, Place, Task Type, Status, Energy, and Time appear on the main form when those properties exist. Date, number, and object-reference properties keep their native inputs. Options come from your existing Anytype properties.
+- **Switch layout**: use Actions → Use Standard Layout / Use Compact Layout (`⌘⇧L`). The choice is remembered locally per account, and switching keeps the current draft.
+- **Additional properties**: use Actions → Show Additional Properties (`⌘⇧M`) for the body, collection, and remaining custom fields.
+- **Create**: `⌘↵` saves the task. `⌘⇧↵` creates it and starts another, keeping the project and collection while resetting task-specific values. Unchanged template properties are preserved, and new tasks start incomplete.
+
 ### Create Object
 
 Create new objects in your spaces directly from Raycast.

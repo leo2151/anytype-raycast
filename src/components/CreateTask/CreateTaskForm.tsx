@@ -1,10 +1,11 @@
 import { Action, ActionPanel, Form, Icon, popToRoot, showToast, Toast } from "@raycast/api";
-import { showFailureToast } from "@raycast/utils";
-import { useRef, useState } from "react";
+import { showFailureToast, useCachedState } from "@raycast/utils";
+import { Fragment as ReactFragment, useRef, useState } from "react";
 import { addObjectsToList, createObjectRaw, updateObjectRaw } from "../../api";
 import { useSearch, useTagsMap } from "../../hooks";
-import { PropertyFormat, RawProperty, RawSpaceObjectWithBody, Space, Type } from "../../models";
+import { RawProperty, RawSpaceObjectWithBody, Space, Type } from "../../models";
 import { bundledPropKeys } from "../../utils";
+import { getCacheNamespace } from "../../utils/cacheScope";
 import {
   initialTaskDraft,
   nextTaskDraft,
@@ -14,6 +15,8 @@ import {
   taskRequest,
   TaskValue,
 } from "../../utils/task";
+import { isTaskChoice, TaskLayout, taskPropertyGroups } from "../../utils/taskLayout";
+import { TaskChoiceGroup } from "./TaskChoiceGroup";
 import { TaskPropertyField } from "./TaskPropertyField";
 
 interface Props {
@@ -33,18 +36,28 @@ export function CreateTaskForm({ config, space, type, template, saved, title, pe
   const titleRef = useRef<Form.TextField>(null);
   const [nameError, setNameError] = useState<string>();
   const [listQuery, setListQuery] = useState("");
+  const [layout, setLayout] = useCachedState<TaskLayout>(`create-task-layout:${getCacheNamespace()}`, "compact");
   const fields = taskFields(type.properties);
   const main = [fields.when, fields.due, fields.projects, fields.flag].filter((p): p is RawProperty => !!p);
   const other = type.properties.filter(
     (p) => !Object.values(bundledPropKeys).includes(p.key) && p.key !== "done" && !main.some((m) => m.key === p.key),
   );
-  const { tagsMap, tagsError, isLoadingTags } = useTagsMap(
+  const { groups, additional } = taskPropertyGroups(other);
+  const visibleProperties = [...groups.flatMap((g) => g.properties), ...(draft.expanded ? additional : [])];
+  const {
+    tagsMap = {},
+    tagsError,
+    isLoadingTags,
+    mutateTags,
+  } = useTagsMap(
     config.spaceId,
-    draft.expanded
-      ? other
-          .filter((p) => p.format === PropertyFormat.Select || p.format === PropertyFormat.MultiSelect)
-          .map((p) => p.id)
-      : [],
+    visibleProperties.filter(isTaskChoice).map((p) => p.id),
+  );
+  const valueLabels = Object.fromEntries(
+    (template?.properties ?? []).map((p) => [
+      p.key,
+      Object.fromEntries((p.select ? [p.select] : (p.multi_select ?? [])).map((tag) => [tag.id, tag.name])),
+    ]),
   );
   const { objects: collections, isLoadingObjects: loadingLists } = useSearch(
     config.spaceId,
@@ -60,10 +73,36 @@ export function CreateTaskForm({ config, space, type, template, saved, title, pe
   }
   function change(patch: Partial<TaskDraft>, key?: string) {
     if (lock.current || draft.pending) return;
-    remember({ ...draft, ...patch, changed: key ? [...new Set([...draft.changed, key])] : draft.changed });
+    remember({
+      ...draft,
+      ...patch,
+      changed: key ? [...new Set([...draft.changed, key])] : (patch.changed ?? draft.changed),
+    });
   }
   function propertyChange(p: RawProperty, value: TaskValue) {
+    if (isTaskChoice(p) && (isLoadingTags || tagsError)) return;
     change({ properties: { ...draft.properties, [p.key]: value } }, p.key);
+  }
+  function groupChange(changes: Record<string, TaskValue>) {
+    if (!Object.keys(changes).length) return;
+    change({
+      properties: { ...draft.properties, ...changes },
+      changed: [...new Set([...draft.changed, ...Object.keys(changes)])],
+    });
+  }
+  function propertyField(p: RawProperty, title?: string) {
+    return (
+      <TaskPropertyField
+        key={p.key}
+        spaceId={config.spaceId}
+        property={p}
+        title={title}
+        value={draft.properties[p.key] ?? null}
+        onChange={(v) => propertyChange(p, v)}
+        tags={tagsMap[p.id]}
+        valueLabels={valueLabels[p.key]}
+      />
+    );
   }
   async function finish(current: TaskDraft, continueCreating: boolean) {
     if (continueCreating) {
@@ -169,10 +208,20 @@ export function CreateTaskForm({ config, space, type, template, saved, title, pe
             onSubmit={() => submit(true)}
           />
           <Action
-            title={draft.expanded ? "Hide More Options" : "Show More Options"}
+            title={layout === "compact" ? "Use Standard Layout" : "Use Compact Layout"}
+            icon={Icon.List}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "l" }}
+            onAction={() => setLayout(layout === "compact" ? "standard" : "compact")}
+          />
+          <Action
+            title={draft.expanded ? "Hide Additional Properties" : "Show Additional Properties"}
             icon={Icon.ChevronDown}
+            shortcut={{ modifiers: ["cmd", "shift"], key: "m" }}
             onAction={() => change({ expanded: !draft.expanded })}
           />
+          {tagsError && (
+            <Action title="Reload Property Options" icon={Icon.ArrowClockwise} onAction={() => mutateTags()} />
+          )}
           <Action
             title="Change Channel or Template"
             icon={Icon.Gear}
@@ -198,18 +247,37 @@ export function CreateTaskForm({ config, space, type, template, saved, title, pe
         ref={titleRef}
         error={nameError}
       />
-      {main.map((p) => (
-        <TaskPropertyField
-          key={p.key}
-          spaceId={config.spaceId}
-          property={p}
-          title={
-            p === fields.when ? "When" : p === fields.due ? "Due Date" : p === fields.projects ? "Projects" : "Flag"
-          }
-          value={draft.properties[p.key] ?? null}
-          onChange={(v) => propertyChange(p, v)}
+      {tagsError && (
+        <Form.Description
+          title="Unable to Load Options"
+          text="Saved selections are preserved. Use Actions → Reload Property Options before editing choices."
         />
-      ))}
+      )}
+      {fields.projects && propertyField(fields.projects, "Projects")}
+      {groups.map((group) => {
+        const choices = group.properties.filter(isTaskChoice);
+        const combine = layout === "compact" && choices.length > 1 && group.id !== "tags";
+        return combine ? (
+          <ReactFragment key={group.id}>
+            <TaskChoiceGroup
+              id={group.id}
+              title={group.title}
+              properties={choices}
+              values={draft.properties}
+              tagsMap={tagsMap}
+              valueLabels={valueLabels}
+              unavailable={Boolean(isLoadingTags || tagsError)}
+              onChange={groupChange}
+            />
+            {group.properties.filter((p) => !isTaskChoice(p)).map((p) => propertyField(p))}
+          </ReactFragment>
+        ) : (
+          <ReactFragment key={group.id}>{group.properties.map((p) => propertyField(p))}</ReactFragment>
+        );
+      })}
+      {fields.when && propertyField(fields.when, "When")}
+      {fields.due && propertyField(fields.due, "Due Date")}
+      {fields.flag && propertyField(fields.flag, "Flag")}
       <Form.Separator />
       <Form.TextField
         id="notes"
@@ -218,18 +286,10 @@ export function CreateTaskForm({ config, space, type, template, saved, title, pe
         value={draft.notes}
         onChange={(notes) => change({ notes }, "description")}
       />
-      <Form.Description title="Save To" text={`${space.name} · ${type.name}`} />
-      <Form.Description title="Template" text={template?.name ?? "No Template"} />
-      <Form.Checkbox
-        id="expanded"
-        title="More Options"
-        label="Show all task properties"
-        value={draft.expanded}
-        onChange={(expanded) => change({ expanded })}
-      />
+      <Form.Description title="Save To" text={`${space.name} · ${type.name} · ${template?.name ?? "No Template"}`} />
       {draft.expanded && (
         <>
-          <Form.Description text="Use Actions to change the channel or template. Template defaults are loaded; unchanged values are preserved." />
+          <Form.Separator />
           <Form.Dropdown
             id="listId"
             title="Collection"
@@ -254,26 +314,7 @@ export function CreateTaskForm({ config, space, type, template, saved, title, pe
             placeholder="Leave blank to preserve the template body"
             info="Text entered here is sent as the new object body. Leave blank to preserve the template body."
           />
-          {tagsError && (
-            <Form.Description
-              title="Unable to Load Tags"
-              text="Template values are preserved. Reopen this command before changing tags."
-            />
-          )}
-          {other.map((p) => (
-            <TaskPropertyField
-              key={p.key}
-              spaceId={config.spaceId}
-              property={p}
-              value={draft.properties[p.key] ?? null}
-              tags={tagsMap?.[p.id]}
-              onChange={(v) => propertyChange(p, v)}
-            />
-          ))}
-          <Form.Description
-            title="Completion"
-            text="New tasks start incomplete. Status retains its template default and can be changed above."
-          />
+          {additional.map((p) => propertyField(p))}
         </>
       )}
     </Form>
