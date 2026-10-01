@@ -22,6 +22,14 @@ test("Projects and Place resolve actual local type keys and IDs, never hardcoded
   assert.deepEqual(filter.typeIds, ["project-id"]);
   assert.deepEqual(resolveReferenceTypes(places, types).typeIds, ["place-id"]);
   assert.deepEqual(resolveReferenceTypes({ key: "x", name: "所属项目" }, types).typeIds, ["project-id"]);
+  const human = { id: "human-id", key: "custom-human", name: "Human", plural_name: "Humans", archived: false };
+  assert.deepEqual(resolveReferenceTypes({ key: "x", name: "Assigned" }, [...types, human]).typeIds, ["human-id"]);
+  assert.deepEqual(resolveReferenceTypes({ key: "y", name: "People" }, [...types, human]).typeIds, ["human-id"]);
+  assert.equal(
+    resolveReferenceTypes({ key: "x", name: "Assigned" }, [human, { ...human, id: "contact-id", name: "Contact" }])
+      .mode,
+    "blocked",
+  );
 });
 test("missing, archived and ambiguous types never silently widen to all objects", () => {
   for (const candidates of [[], [{ ...project, archived: true }], [project, { ...project, id: "duplicate" }]])

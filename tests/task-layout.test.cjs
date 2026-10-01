@@ -17,19 +17,26 @@ test("core fields are promoted without coercing numbers, object references, or c
     city,
     property("location", "Location", "objects"),
     property("energy", "Energy"),
+    property("assignee", "Assigned", "objects"),
+    property("people", "People", "objects"),
+    property("tools", "Tools", "objects"),
+    property("custom", "Unrelated"),
   ];
   const result = layout.taskPropertyGroups(fields);
   assert.deepEqual(
     result.groups.map((g) => [g.id, g.properties.map((p) => p.key)]),
     [
-      ["location", ["customCity", "location"]],
+      ["task", ["4type"]],
+      ["people", ["assignee", "people"]],
       ["gtd", ["energy", "time"]],
+      ["resources", ["tools"]],
+      ["location", ["customCity", "location"]],
       ["tags", ["tag"]],
     ],
   );
   assert.deepEqual(
     result.additional.map((p) => p.key),
-    ["4type"],
+    ["custom"],
   );
   assert.equal(layout.isTaskChoice(fields[1]), false);
   assert.equal(layout.isTaskChoice(fields[4]), false);

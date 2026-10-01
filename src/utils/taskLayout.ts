@@ -9,9 +9,51 @@ export interface TaskPropertyGroup {
 }
 const normalize = (value: string) => value.toLowerCase().replace(/[\s_-]/g, "");
 const definitions = [
-  { id: "task", title: "Task", names: ["task_type", "任务类型", "status", "状态"] },
+  {
+    id: "task",
+    title: "Priority",
+    names: ["task_type", "任务类型", "4type", "quadrant", "四象限", "eisenhower", "status", "状态"],
+  },
+  {
+    id: "people",
+    title: "People",
+    names: [
+      "assigned",
+      "assignee",
+      "assignees",
+      "负责人",
+      "指派给",
+      "people",
+      "person",
+      "persons",
+      "关联人员",
+      "联系人",
+    ],
+  },
+  { id: "gtd", title: "Effort", names: ["energy", "精力", "time", "耗时"] },
+  {
+    id: "resources",
+    title: "Resources",
+    names: [
+      "skill",
+      "skills",
+      "技能",
+      "experience",
+      "经验",
+      "tool",
+      "tools",
+      "工具",
+      "equipment",
+      "设备",
+      "material",
+      "materials",
+      "材料",
+      "resource",
+      "resources",
+      "资源",
+    ],
+  },
   { id: "location", title: "Location", names: ["city", "城市", "location", "地点", "place", "场所"] },
-  { id: "gtd", title: "GTD", names: ["energy", "精力", "time", "耗时"] },
   { id: "tags", title: "Tag", names: ["tag", "tags", "标签"] },
 ];
 /** Promote every matching core field, including fields whose format cannot be combined. */

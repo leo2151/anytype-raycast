@@ -1,3 +1,9 @@
+## [Task-first capture order] - 2026-10-01
+
+- Put Important, Task Type, and the existing 4Type/quadrant at the top, followed by schedule, Assigned, People, effort, and execution requirements.
+- Keep assignees and related people separate and promote existing skill/tool/resource fields without creating or renaming Anytype properties.
+- Move Projects and Tag after execution details, preserve compact choices and draft values, and add a direct shortcut to reference-type settings.
+
 ## [Task reference type filters] - 2026-10-01
 
 - Filter Projects, Place, and other Create Task object relations by actual types in the current channel instead of searching every object.

@@ -130,6 +130,29 @@ export function CreateTaskForm({
       />
     );
   }
+  function propertyGroup(id: string) {
+    const group = groups.find((group) => group.id === id);
+    if (!group) return null;
+    const choices = group.properties.filter(isTaskChoice);
+    const combine = layout === "compact" && choices.length > 1 && !["tags", "people"].includes(group.id);
+    return combine ? (
+      <ReactFragment key={group.id}>
+        <TaskChoiceGroup
+          id={group.id}
+          title={group.title}
+          properties={choices}
+          values={draft.properties}
+          tagsMap={tagsMap}
+          valueLabels={valueLabels}
+          unavailable={Boolean(isLoadingTags || tagsError)}
+          onChange={groupChange}
+        />
+        {group.properties.filter((p) => !isTaskChoice(p)).map((p) => propertyField(p))}
+      </ReactFragment>
+    ) : (
+      <ReactFragment key={group.id}>{group.properties.map((p) => propertyField(p))}</ReactFragment>
+    );
+  }
   async function finish(current: TaskDraft, continueCreating: boolean) {
     if (continueCreating) {
       const next = nextTaskDraft(config, type, template, current);
@@ -257,6 +280,7 @@ export function CreateTaskForm({
             <Action
               title="Reference Type Filters"
               icon={Icon.Filter}
+              shortcut={{ modifiers: ["cmd", "shift"], key: "f" }}
               onAction={() => {
                 if (!lock.current) setEditingReferenceTypes(true);
               }}
@@ -302,31 +326,14 @@ export function CreateTaskForm({
           text="Saved selections are preserved. Use Actions → Reload Property Options before editing choices."
         />
       )}
-      {fields.projects && propertyField(fields.projects, "Projects")}
-      {groups.map((group) => {
-        const choices = group.properties.filter(isTaskChoice);
-        const combine = layout === "compact" && choices.length > 1 && group.id !== "tags";
-        return combine ? (
-          <ReactFragment key={group.id}>
-            <TaskChoiceGroup
-              id={group.id}
-              title={group.title}
-              properties={choices}
-              values={draft.properties}
-              tagsMap={tagsMap}
-              valueLabels={valueLabels}
-              unavailable={Boolean(isLoadingTags || tagsError)}
-              onChange={groupChange}
-            />
-            {group.properties.filter((p) => !isTaskChoice(p)).map((p) => propertyField(p))}
-          </ReactFragment>
-        ) : (
-          <ReactFragment key={group.id}>{group.properties.map((p) => propertyField(p))}</ReactFragment>
-        );
-      })}
+      {fields.flag && propertyField(fields.flag, "Important")}
+      {propertyGroup("task")}
       {fields.when && propertyField(fields.when, "When")}
       {fields.due && propertyField(fields.due, "Due Date")}
-      {fields.flag && propertyField(fields.flag, "Flag")}
+      {propertyGroup("people")}
+      {propertyGroup("gtd")}
+      {propertyGroup("resources")}
+      {propertyGroup("location")}
       <Form.Separator />
       <Form.TextField
         id="notes"
@@ -335,6 +342,8 @@ export function CreateTaskForm({
         value={draft.notes}
         onChange={(notes) => change({ notes }, "description")}
       />
+      {fields.projects && propertyField(fields.projects, "Projects")}
+      {propertyGroup("tags")}
       <Form.Description title="Save To" text={`${space.name} · ${type.name} · ${template?.name ?? "No Template"}`} />
       {draft.expanded && (
         <>

@@ -15,7 +15,23 @@ const normalize = (value: string) => value.toLowerCase().replace(/[\s_-]/g, "");
 const aliases = [
   ["project", "projects", "项目", "所属项目"],
   ["place", "places", "地点", "场所"],
-  ["person", "people", "persons", "联系人", "人物"],
+  [
+    "person",
+    "people",
+    "persons",
+    "human",
+    "humans",
+    "contact",
+    "contacts",
+    "assigned",
+    "assignee",
+    "assignees",
+    "联系人",
+    "人物",
+    "关联人员",
+    "负责人",
+    "指派给",
+  ],
 ];
 /** Resolve local Type IDs first. API keys are used only for the server-side search. */
 export function resolveReferenceTypes(

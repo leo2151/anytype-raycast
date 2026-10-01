@@ -127,7 +127,7 @@ export function TaskPropertyField(props: Props) {
       return (
         <Form.Checkbox
           {...common}
-          label={title === "Flag" ? "Mark as important" : ""}
+          label={title === "Flag" || title === "Important" ? "Mark as important" : ""}
           value={Boolean(value)}
           onChange={onChange}
         />
